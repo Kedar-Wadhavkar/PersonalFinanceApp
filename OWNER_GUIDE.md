@@ -21,7 +21,7 @@ PersonalFinanceApp/
 ├── public/               Copied as-is to the site: icons, sample-workbook.xlsx
 ├── fonts/                IBM Plex Sans, bundled so the app works offline
 ├── .github/workflows/    deploy.yml: tests, builds and publishes on every push to main
-│                         preview.yml: checks every pull request; optional one-file download
+│                         preview.yml: one-file download of every pull request, to try before merging
 ├── vite.config.ts        Build settings: site path, security policy, offline (PWA) setup
 ├── vite.singlefile.config.ts  The one-file preview build (npm run build:preview)
 ├── vitest.config.ts      Test settings
@@ -208,24 +208,31 @@ means it is live.
 - **One-time setting** (already done): repository Settings → Pages → Source
   = **GitHub Actions**.
 
-### Pull request checks and the optional preview
+### Try a pull request before merging it
 
-**You don't need to check pull requests yourself.** Claude decides whether a
-change is safe to merge: tests pass, both builds succeed, and it has tried
-the change itself. Then it merges, and the live site updates.
+The flow is: Claude pushes a branch → opens a pull request → GitHub builds a
+**preview** of it → you open the preview and decide. **Nothing is merged
+until you say so.**
 
-Every pull request also builds a **preview** (`.github/workflows/preview.yml`):
-the whole app in one `index.html` that opens by double-clicking, with no
-Node, no server and nothing to install. It is optional and posts nothing.
-If you ever want to look before a merge: the pull request's **Checks** tab →
-"PR preview" → **Summary** → **Artifacts** → `finance-preview-pr-<number>`.
-Unzip it and double-click `index.html`. `sample-workbook.xlsx` is in the
-same zip.
+The preview is the whole app in one `index.html` that opens by
+double-clicking, with no Node, no server and nothing to install. It does
+not touch the live site.
+
+1. Open the pull request on GitHub. About a minute after each push, a
+   comment **"Preview of this pull request"** appears (it is updated on
+   every push).
+2. Click **Download the preview (zip)**. You must be signed in to GitHub.
+   (Or: the pull request's **Checks** tab → "PR preview" → the run's
+   **Artifacts** list → `finance-preview-pr-<number>`.)
+3. Unzip it and double-click `index.html`. Load Excel works as usual, and
+   `sample-workbook.xlsx` is in the same zip.
+4. Happy with it? Tell Claude to merge (or press **Merge** yourself). The
+   live site updates about a minute later.
 
 The preview has no offline/install support (a service worker cannot run
-from a file). It still blocks every network request. Downloads are kept
-for 30 days. To build one yourself: `npm run build:preview`, then open
-`dist-preview/index.html`.
+from a file), so it shows no "ready to work offline" note. It still blocks
+every network request. Downloads are kept for 30 days. To build one
+yourself: `npm run build:preview`, then open `dist-preview/index.html`.
 
 ---
 
