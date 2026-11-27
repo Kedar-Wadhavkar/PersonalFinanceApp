@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -7,9 +7,17 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <title>Finance Analytics</title>
+    <meta name="description" content="Income, expense, savings and investment analytics from your own Excel workbook. Works offline; files never leave the device." />
+    <meta name="theme-color" content="#0f766e" />
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- The regular weight is needed for the first paint: fetch it with the CSS, not after -->
+    <link rel="preload" href="/fonts/IBM_Plex_Sans/static/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin />
   </head>
 
   <body>
+    <a class="skip-link" href="#modulePage">Skip to content</a>
     <div class="app">
     <!-- ======================================== SIDE NAVIGATION ========================================
          Stays in place while the page scrolls (position: sticky). The top
@@ -29,7 +37,7 @@
             type="file"
             accept=".xlsx"
             multiple
-            hidden
+            class="visually-hidden"
           />
         </label>
         <!-- Always visible: what happens to the data. More in the welcome card. -->
@@ -286,34 +294,34 @@
             <thead>
               <tr>
                 <th class="sortable" data-col="Date">
-                  <span class="sorthead">
+                  <button type="button" class="sorthead">
                     <span class="sortname">Date</span>
                     <span class="sortarrow" aria-hidden="true"></span>
-                  </span>
+                  </button>
                 </th>
                 <th class="sortable" data-col="Particular">
-                  <span class="sorthead">
+                  <button type="button" class="sorthead">
                     <span class="sortname">Particular</span>
                     <span class="sortarrow" aria-hidden="true"></span>
-                  </span>
+                  </button>
                 </th>
                 <th class="sortable" data-col="Category">
-                  <span class="sorthead">
+                  <button type="button" class="sorthead">
                     <span class="sortname">Category</span>
                     <span class="sortarrow" aria-hidden="true"></span>
-                  </span>
+                  </button>
                 </th>
                 <th class="sortable" data-col="Mode">
-                  <span class="sorthead">
+                  <button type="button" class="sorthead">
                     <span class="sortname">Mode</span>
                     <span class="sortarrow" aria-hidden="true"></span>
-                  </span>
+                  </button>
                 </th>
                 <th class="sortable" data-col="Amount">
-                  <span class="sorthead">
+                  <button type="button" class="sorthead">
                     <span class="sortname">Amount</span>
                     <span class="sortarrow" aria-hidden="true"></span>
-                  </span>
+                  </button>
                 </th>
               </tr>
             </thead>
@@ -422,7 +430,7 @@
         <div
           id="multiYearChart"
           class="chart-box"
-          role="img"
+          role="group"
           aria-label="Multi-year monthly comparison chart"
         ></div>
         <div id="multiYearLegend" class="legend"></div>
@@ -440,7 +448,7 @@
         <div
           id="categoryYearChart"
           class="chart-box"
-          role="img"
+          role="group"
           aria-label="Multi-year category comparison chart"
         ></div>
         <div id="categoryYearLegend" class="legend"></div>
@@ -499,6 +507,13 @@
         <b id="loadingText">Reading the workbook</b>
         <span class="small">Processed on this device. Nothing is uploaded.</span>
       </div>
+    </div>
+
+    <!-- Offline / update note (pwa.ts) -->
+    <div id="appNote" class="app-note" role="status" aria-live="polite" hidden>
+      <span id="appNoteText"></span>
+      <button type="button" id="appNoteReload" class="btn" hidden>Reload</button>
+      <button type="button" id="appNoteClose" class="app-note-close" title="Dismiss" aria-label="Dismiss">×</button>
     </div>
 
     <button id="toTop" class="to-top" type="button" title="Back to top" aria-label="Back to top" hidden>↑</button>

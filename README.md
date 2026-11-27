@@ -21,6 +21,20 @@ site carries a Content Security Policy (see `vite.config.ts`) with
 `connect-src 'none'`, so the browser itself refuses any network request the
 page might try to make: the app has no way to send your data anywhere.
 
+## Install and offline use
+
+The site is an installable Progressive Web App (vite-plugin-pwa). After the
+first visit it works with no connection at all, on phones and desktops:
+
+- Desktop Chrome / Edge: the install icon in the address bar, or menu > Install.
+- Android Chrome: menu > Add to Home screen / Install app.
+- iPhone / iPad Safari: Share > Add to Home Screen.
+
+The service worker stores only the app itself (HTML, JS, CSS, fonts, icons,
+sample workbook). Workbooks are never cached or saved, and there is no runtime
+caching. When a new version is deployed, a note offers **Reload**; the page
+never reloads on its own, because that would clear a loaded workbook.
+
 ## How to use
 
 1. Open the live site (or run it locally, see below).
@@ -72,10 +86,13 @@ Market tables are found by their headings: orders (Date, Order, Holding, Units, 
 - `src/main.ts`: start-up and event wiring
 - `src/types.ts`: interfaces for parsed Excel rows, transactions, settings, categories and summary metrics
 - `src/state.ts`: shared app state
-- `src/excel.ts`: reads .xlsx files with no libraries
+- `src/excel.ts`: reads .xlsx files with no libraries (loaded on demand, not in the first download)
+- `src/cellValues.ts`: reading a cell as a date or amount (shared with the market page)
+- `src/pwa.ts`: service worker registration and the offline / new-version note
 - `src/*.ts`: one file per section (dashboard, charts, calendar, overview, market, ...)
 - `styles/main.css`: styles
-- `fonts/`: IBM Plex Sans, bundled locally (SIL Open Font License)
+- `fonts/`: IBM Plex Sans as WOFF2, bundled locally (SIL Open Font License)
+- `public/icons/`: app icons (`icon.svg` is the source of the PNGs)
 - `public/`: files copied to the site as they are
 - `vite.config.ts`, `tsconfig.json`: build and strict type-check settings
 

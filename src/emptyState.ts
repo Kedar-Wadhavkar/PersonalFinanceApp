@@ -27,10 +27,10 @@ function welcomeHtml(): string {
   return `
     <div class="empty-main">
       <span class="empty-eyebrow">Get started</span>
-      <h2 class="empty-title">See where your money goes</h2>
+      <h1 class="empty-title">See where your money goes</h1>
       <p class="empty-text">Load your finance workbook to turn its sheets into charts and tables for spending, income, savings and investments.</p>
       <div class="empty-actions">
-        <label for="file" class="btn btn-primary" role="button" tabindex="0">Load Excel</label>
+        <button type="button" class="btn btn-primary" data-pick-file>Load Excel</button>
         <a class="btn btn-secondary" href="sample-workbook.xlsx" download>Download a sample workbook</a>
       </div>
       <ol class="empty-steps">
@@ -58,7 +58,7 @@ function noRowsHtml(): string {
       <h2 class="empty-title">No ${esc(m.text.noun)} rows yet</h2>
       <p class="empty-text">${why} Add them in Excel and load the file again.</p>
       <div class="empty-actions">
-        <label for="file" class="btn btn-primary" role="button" tabindex="0">Load Excel</label>
+        <button type="button" class="btn btn-primary" data-pick-file>Load Excel</button>
       </div>
     </div>`;
 }
@@ -79,13 +79,11 @@ export function updateModuleEmpty(): void {
   if (empty) box.innerHTML = anyDataLoaded() ? noRowsHtml() : welcomeHtml();
 }
 
-/** The "Load Excel" labels in empty states act as buttons: Enter / Space
-    opens the file chooser (a label does that only on click). */
+/** The "Load Excel" buttons in empty states open the same file chooser as
+    the one in the side bar (one handler for all of them, also for the ones
+    drawn later). */
 export function setupEmptyState(): void {
-  document.addEventListener("keydown", (e) => {
-    const label = (e.target as Element).closest?.("label[for='file']");
-    if (!label || (e.key !== "Enter" && e.key !== " ")) return;
-    e.preventDefault();
-    $("file").click();
+  document.addEventListener("click", (e) => {
+    if ((e.target as Element).closest?.("[data-pick-file]")) $("file").click();
   });
 }

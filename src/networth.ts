@@ -1,6 +1,6 @@
 import { CONFIG } from "./config";
 import { simHtml, simOutputHtml, simOutputs, simState, type SimInput } from "./forecast";
-import { excelDate, normalizeCurrency, parseAmount } from "./excel";
+import { excelDate, normalizeCurrency, parseAmount } from "./cellValues";
 import { monthIndex, monthName, totalsByMonth } from "./insights";
 import { getMarketData, marketSummary, mkFindHeader } from "./market";
 import { moduleData } from "./modules";

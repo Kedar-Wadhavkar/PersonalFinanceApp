@@ -3,7 +3,6 @@ import { renderCategoryYear, resetCategoryYear } from "./categoryCompare";
 import { CONFIG } from "./config";
 import { redrawAreas, render, setupBarClicks, setupBarFilterResets, setupKpiSwitch, setupUpperSort } from "./dashboard";
 import { relayoutDonuts, resetDonuts } from "./donuts";
-import { parseMatrices, workbookMatrices } from "./excel";
 import { FILTER_PREFIXES, filterMultiIds } from "./filterGroup";
 import { resetDashboardFilters, updateSearchClear } from "./filters";
 import { relayoutHeatmap, resetHeatmap, setupHeatmapClicks } from "./heatmap";
@@ -54,6 +53,9 @@ $<HTMLInputElement>("file").onchange = async (e) => {
   try {
     const sheets: SheetMatrix[] = [];
     const names = files.map((f) => f.name).join(", ");
+    // The workbook reader is a separate file, fetched the first time it is
+    // needed (or earlier, see preloadReader), so the first page load is lighter
+    const { parseMatrices, workbookMatrices } = await import("./excel");
     for (const file of files) sheets.push(...(await workbookMatrices(await file.arrayBuffer())));
     const parsed = {} as Record<ModuleKey, ModuleParseResult>;
     MODULE_KEYS.forEach((key) => (parsed[key] = parseMatrices(sheets, MODULES[key])));
@@ -125,6 +127,14 @@ $<HTMLInputElement>("file").onchange = async (e) => {
   }
 };
 
+// Fetch the reader as soon as a file might be picked: pointer over or focus
+// on Load Excel, or the browser is idle after start-up
+const preloadReader = (): void => void import("./excel");
+const upload = document.querySelector<HTMLElement>(".upload")!;
+upload.addEventListener("pointerenter", preloadReader, { once: true });
+upload.addEventListener("focusin", preloadReader, { once: true });
+if ("requestIdleCallback" in window) requestIdleCallback(preloadReader, { timeout: 4000 });
+
 /* ------------ Dropdowns, buttons and search ------------ */
 
 FILTER_PREFIXES.forEach((prefix) => wireMultiToggles(filterMultiIds(prefix)));
@@ -169,6 +179,18 @@ $("searchClear").onclick = () => {
     scrollTableToTop();
     render();
     $("search").focus();
+};
+
+/* ------------ Skip link ------------ */
+
+// "Skip to content" moves focus to the page that is showing (module,
+// Overview or Market), past the side navigation
+document.querySelector<HTMLAnchorElement>(".skip-link")!.onclick = (e) => {
+  const page = document.querySelector<HTMLElement>("main.wrap:not([hidden])");
+  if (!page) return;
+  e.preventDefault();
+  page.tabIndex = -1;
+  page.focus();
 };
 
 /* ------------ Go-to-top button ------------ */
@@ -218,6 +240,9 @@ setupBarClicks();
 setupHeatmapClicks();
 setupTxSort();
 selectModule(activeModule);
+
+// Offline support (built site only; the dev server and tests have none)
+if (import.meta.env.PROD && "serviceWorker" in navigator) void import("./pwa").then((m) => m.setupPwa());
 
 // On resize: the table's row height, the bar positions under the area
 // curves, the width of the category comparison chart and the number of
