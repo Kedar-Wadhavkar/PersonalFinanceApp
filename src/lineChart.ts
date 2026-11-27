@@ -4,7 +4,7 @@ import { sortedByTotal } from "./filterGroup";
 import { T } from "./modules";
 import { createMultiSelect } from "./multiselect";
 import { rows } from "./state";
-import { $, NO_DATA_HTML, esc, money, moneyShort, tint } from "./utils";
+import { $, NO_DATA_HTML, esc, money, moneyShort, tint, todayUtcMs } from "./utils";
 
 /* =========================================================================
    lineChart.ts
@@ -278,8 +278,11 @@ export function renderLineChart(): void {
   const totals = values.map((v) => v.reduce((a, b) => a + b, 0)); // per category, in this period
 
   // The last month is dashed while it is not over yet
-  const todayMs = new Date().setHours(0, 0, 0, 0);
-  const partial = win.mode === "month" && win.t1 - DAY_MS > todayMs;
+  // Today on the device, on the same UTC-midnight scale as isoMs(). (Local
+  // midnight in ms is hours off that scale, so west of UTC the last day of a
+  // month already counted as "over".)
+  const todayMs = todayUtcMs();
+  const partial = win.mode === "month" && win.t1 - DAY_MS >= todayMs;
 
   // Scale: money, or - normalized - every line as a share of its own peak
   const normalized = lineState.normalize && cats.length > 1;

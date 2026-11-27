@@ -4,7 +4,7 @@ import { MODULE_KEYS, activeModule, moduleData } from "./modules";
 import type { ModuleKey, MonthSummary, OverviewData, Transaction } from "./types";
 import { currencySymbol } from "./settings";
 import { activeCurrency, setActiveCurrency } from "./state";
-import { $, emptyCardHtml, esc, money, moneyShort, setMoneyCurrency } from "./utils";
+import { $, emptyCardHtml, esc, money, moneySign, roundCents, setMoneyCurrency, signedMoneyShort } from "./utils";
 
 /* =========================================================================
 overview.ts
@@ -35,7 +35,6 @@ export const overviewState: { period: "month" | "year"; month: number | null } =
 // Month helpers (monthIndex / monthName are in insights.ts)
 export const shortMonth = (i: number): string => `${CONFIG.months[i % 12]} ${String(Math.floor(i / 12)).slice(2)}`;
 const pctText = (v: number): string => `${Math.round(v)}%`;
-const signedShort = (v: number): string => `${v < 0 ? "−" : "+"}${moneyShort(Math.abs(v))}`;
 
 // Records of one module in the chosen currency
 export function overviewRecords(key: ModuleKey): Transaction[] {
@@ -57,7 +56,7 @@ export function overviewData(): OverviewData | null {
   for (let m = first; m <= last; m++) {
     const inc = incM.get(m) || 0;
     const exp = expM.get(m) || 0;
-    months.push({ m, inc, exp, net: inc - exp });
+    months.push({ m, inc, exp, net: roundCents(inc - exp) });
   }
   // Latest month BOTH sheets reached = default selection
   const lastOf = (map: Map<number, number>) => (map.size ? Math.max(...map.keys()) : -1);
@@ -81,7 +80,7 @@ export function periodLabel(list: number[]): string {
 }
 
 export function sumOver(map: Map<number, number>, list: number[]): number {
-  return list.reduce((s, m) => s + (map.get(m) || 0), 0);
+  return roundCents(list.reduce((s, m) => s + (map.get(m) || 0), 0));
 }
 
 // Share of every 100 earned: "₹12", "<₹1"
@@ -112,7 +111,7 @@ export function renderOverview(): void {
   const label = periodLabel(list);
   const I = sumOver(d.incM, list);
   const E = sumOver(d.expM, list);
-  const N = I - E;
+  const N = roundCents(I - E);
   const rate = I ? (N / I) * 100 : null;
 
   // Same period one step back, for the change lines
@@ -178,14 +177,14 @@ export function renderOverview(): void {
       return `<button type="button" class="ov-month${on ? " on" : ""}" data-month="${x.m}" aria-pressed="${on}" title="${esc(`${monthName(x.m)} · income ${money(x.inc)} · expenses ${money(x.exp)} · net ${money(x.net)}`)}">
           <span class="ov-bars"><span class="ov-bar ov-inc" style="height:${h(x.inc)}"></span><span class="ov-bar ov-exp" style="height:${h(x.exp)}"></span></span>
           <span class="ov-mlabel">${esc(shortMonth(x.m))}</span>
-          <span class="ov-net ${x.net < 0 ? "ov-neg" : "ov-pos"}">${esc(signedShort(x.net))}</span>
+          <span class="ov-net ${moneySign(x.net) < 0 ? "ov-neg" : "ov-pos"}">${esc(signedMoneyShort(x.net))}</span>
         </button>`;
     })
     .join("");
 
   /* ---- Cumulative savings (all months) ---- */
   let run = 0;
-  const cum = d.months.map((x) => (run += x.net));
+  const cum = d.months.map((x) => (run = roundCents(run + x.net)));
   const W = 520;
   const H = 170;
   const lo = Math.min(0, ...cum);

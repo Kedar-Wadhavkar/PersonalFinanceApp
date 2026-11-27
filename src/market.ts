@@ -13,7 +13,7 @@ import type {
   SheetGrid,
   SheetMatrix,
 } from "./types";
-import { $, emptyCardHtml, esc, money, moneyShort, setMoneyCurrency } from "./utils";
+import { $, emptyCardHtml, esc, money, moneyShort, moneySign, setMoneyCurrency, signedMoney, todayIso } from "./utils";
 
 /* =========================================================================
 market.ts
@@ -198,7 +198,8 @@ export function parseMarket(sheets: SheetMatrix[]): MarketData | null {
 
 const MK_DAY = 86400000;
 const mkDays = (a: string, b: string): number => (Date.parse(b) - Date.parse(a)) / MK_DAY;
-const mkToday = (): string => new Date().toISOString().slice(0, 10);
+// Today on the device (toISOString would give the UTC date)
+const mkToday = (): string => todayIso();
 
 // Annual return of dated cash flows (negative = money in), by bisection
 export function mkXirr(flows: CashFlow[]): number | null {
@@ -321,11 +322,24 @@ const mkPriceFmt = (): Intl.NumberFormat =>
     maximumFractionDigits: 2,
   });
 let mkPrice: (n: number) => string = (n) => String(n);
-export const mkPct = (v: number | null | undefined, digits = 1): string => (v === null || v === undefined ? "–" : `${(v * 100).toFixed(digits)}%`);
-export const mkSignPct = (v: number | null): string => (v === null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(1)}%`);
-const mkSigned = (v: number): string => `${v < 0 ? "−" : v > 0 ? "+" : ""}${money(Math.abs(v))}`;
+export const mkPct = (v: number | null | undefined, digits = 1): string => {
+  if (v === null || v === undefined) return "–";
+  const text = (v * 100).toFixed(digits);
+  return `${Number(text) === 0 ? (0).toFixed(digits) : text}%`; // never "-0.0%"
+};
+// The sign follows the figure as shown: -0.0004 is "0.0%", not "−0.0%"
+export const mkSignPct = (v: number | null): string => {
+  if (v === null) return "–";
+  const text = Math.abs(v * 100).toFixed(1);
+  const zero = Number(text) === 0;
+  return `${zero ? "" : v > 0 ? "+" : "−"}${text}%`;
+};
+const mkSigned = (v: number): string => signedMoney(v);
 export const mkQty = (q: number): string => (Number.isInteger(Math.round(q * 1000) / 1000) ? String(Math.round(q)) : q.toFixed(3));
-const mkCls = (v: number): string => (v < 0 ? "mk-neg" : v > 0 ? "mk-pos" : "");
+// Colour of a money figure: none for one shown as "₹0"
+const mkCls = (v: number): string => ["mk-neg", "", "mk-pos"][moneySign(v) + 1]!;
+// Colour of a share (P/L %, XIRR): none for one shown as "0.0%"
+const mkPctCls = (v: number): string => (Math.abs(v) < 0.0005 ? "" : v < 0 ? "mk-neg" : "mk-pos");
 export const mkDate = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 
 /* ------------ Drawing ------------ */
@@ -375,7 +389,7 @@ function mkCards(s: MarketSummary): string {
       sub: `${mkSignPct(s.invested ? s.pnl / s.invested : 0)} · booked ${mkSigned(s.realised)}`,
       cls: mkCls(s.pnl),
     },
-    { label: "XIRR", value: s.xirr === null ? "–" : mkPct(s.xirr), sub: "Yearly return of all orders", cls: mkCls(s.xirr || 0) },
+    { label: "XIRR", value: s.xirr === null ? "–" : mkPct(s.xirr), sub: "Yearly return of all orders", cls: mkPctCls(s.xirr || 0) },
   ];
   if (s.bench) {
     const diff = s.current - s.bench.value;
@@ -608,8 +622,12 @@ const MK_COLUMNS: HoldingColumn[] = [
 function mkTableHtml(s: MarketSummary): string {
   const key = mkState.sortKey as keyof Holding;
   const rows = [...s.held].sort((a, b) => {
-    const x = (a[key] ?? -Infinity) as string | number;
-    const y = (b[key] ?? -Infinity) as string | number;
+    const x = a[key] as string | number | null;
+    const y = b[key] as string | number | null;
+    // Empty values (no price, no XIRR) go last in either direction. They
+    // used to be -Infinity, and -Infinity - -Infinity is NaN, which broke
+    // the sort whenever two holdings had no value.
+    if (x == null || y == null) return (x == null ? 1 : 0) - (y == null ? 1 : 0);
     return (typeof x === "string" ? x.localeCompare(String(y)) : x - (y as number)) * mkState.sortDir;
   });
   const cell = (h: Holding, [k, , type]: HoldingColumn): string => {
@@ -619,7 +637,7 @@ function mkTableHtml(s: MarketSummary): string {
       case "text":
         if (k === "category") return `<span class="ov-sw" style="background:${mkCatColor(v)}"></span>${esc(v)}`;
         // The name is a button, so a holding's buys can be opened from the keyboard too
-        return k === "name" ? `<button type="button" class="mk-link" data-holding="${esc(v)}">${esc(v)}</button>` : esc(v);
+        return k === "name" ? `<button type="button" class="mk-link" data-holding="${esc(v)}" title="${esc(v)}">${esc(v)}</button>` : esc(v);
       case "qty":
         return esc(mkQty(v));
       case "price":
@@ -629,7 +647,7 @@ function mkTableHtml(s: MarketSummary): string {
       case "signed":
         return `<span class="${mkCls(v)}">${esc(mkSigned(v))}</span>`;
       case "pct":
-        return v === null ? "–" : `<span class="${mkCls(v)}">${esc(mkSignPct(v))}</span>`;
+        return v === null ? "–" : `<span class="${mkPctCls(v)}">${esc(mkSignPct(v))}</span>`;
       case "share":
         return esc(mkPct(v));
       case "lt":
@@ -651,7 +669,7 @@ function mkTableHtml(s: MarketSummary): string {
     <div class="mk-tablewrap"><table class="mk-table">
       <thead><tr>${head}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="num">${esc(money(s.invested))}</td><td></td><td class="num">${esc(money(s.current))}</td><td class="num ${mkCls(s.pnl)}">${esc(mkSigned(s.pnl))}</td><td class="num ${mkCls(p)}">${esc(mkSignPct(p))}</td><td class="num">100%</td><td></td><td class="num">${esc(mkPct(s.xirr))}</td></tr></tfoot>
+      <tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="num">${esc(money(s.invested))}</td><td></td><td class="num">${esc(money(s.current))}</td><td class="num ${mkCls(s.pnl)}">${esc(mkSigned(s.pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">100%</td><td></td><td class="num">${esc(mkPct(s.xirr))}</td></tr></tfoot>
     </table></div>`;
 }
 
@@ -817,7 +835,7 @@ function mkDividendsHtml(): string {
     const open = !mkState.divOpen.has(key); // all open until closed
     rows += `<tr class="mk-dgroup"><td><button type="button" data-div-toggle="${esc(key)}" aria-expanded="${open}">${open ? "−" : "+"}</button> ${esc(label(g))}</td>${cells(sum)}</tr>`;
     if (open) {
-      for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
+      for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild" title="${esc(label(c))}">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
   return `<div class="ov-head">

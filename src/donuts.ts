@@ -289,7 +289,11 @@ function donutHtml(d: DonutDefinition, selected: number, total: number, noSelect
   const head = `<div class="donut-head"><b>${d.title}</b><span class="small" title="${esc(headTip)}">${esc(headText)}</span></div>`;
 
   const others = total - selected;
-  const share = total ? selected / total : 0;
+  // Refunds are negative amounts, so a part can be below zero or above the
+  // whole (a category of refunds: share -0.2). The ring is drawn with the
+  // share kept within 0..1, or the arc would run off the half circle.
+  const rawShare = total ? selected / total : 0;
+  const share = Number.isFinite(rawShare) ? Math.min(1, Math.max(0, rawShare)) : 0;
   const { width, height, cx, cy } = DONUT_SIZE;
 
   // One clickable part. The active one gets the outline. Keyboard: Tab to
@@ -316,14 +320,14 @@ function donutHtml(d: DonutDefinition, selected: number, total: number, noSelect
   } else {
     // The normal view: no label line
     label = "";
-    centreShare = share;
+    centreShare = rawShare; // the true share, even below 0 or above 100%
     centreAmount = selected;
   }
 
   // Screen readers get the figures too (they cannot see the card)
   const spoken = noSelection
     ? `${d.title}: nothing selected`
-    : `${d.title}: ${choice}. Selected ${money(selected)}, ${percentText(share)}. Others ${money(others)}`;
+    : `${d.title}: ${choice}. Selected ${money(selected)}, ${percentText(rawShare)}. Others ${money(others)}`;
   // role="group" (not "img"): the picture contains buttons
   let svg = `<svg viewBox="0 0 ${width} ${height}" role="group" aria-label="${esc(spoken)}">`;
   if (noSelection) {

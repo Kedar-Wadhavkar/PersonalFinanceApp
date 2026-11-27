@@ -1,6 +1,7 @@
 import { CONFIG } from "./config";
 import { MODULES } from "./modules";
 import { emptySettings } from "./state";
+import { roundCents } from "./utils";
 import type {
   CellValue,
   ModuleDefinition,
@@ -441,8 +442,9 @@ export function parseMatrices(sheets: SheetMatrix[], module: ModuleDefinition): 
           const record: Transaction = {
             Date: iso,
             Particular: particular,
-            Amount: (amount || 0) + (credit || 0),
-            Principal: principal !== null && Number.isFinite(principal) ? principal : null,
+            // Rounded to cents: 100.1 + 0.2 would otherwise be 100.30000000000001
+            Amount: roundCents((amount || 0) + (credit || 0)),
+            Principal: principal !== null && Number.isFinite(principal) ? roundCents(principal) : null,
             Category: category,
             Mode: mode,
             Currency: currency,

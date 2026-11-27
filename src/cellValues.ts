@@ -55,7 +55,10 @@ export function parseTextDate(text: unknown): Date | null {
 // dates go through parseTextDate().
 export function excelDate(v: unknown): Date | null {
   if (typeof v === "number") {
-    return v > 0
+    // Day 2958465 is 31-12-9999, Excel's last date. A bigger number (an
+    // amount typed in the Date column) would give a 5-digit year, and
+    // "+10000-01-01" breaks every "YYYY-MM-DD" reader.
+    return v > 0 && v < 2958466
       ? new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86400000))
       : null;
   }

@@ -22,16 +22,22 @@ function makeMoneyFormat(code: string, compact: boolean): Intl.NumberFormat {
     ? // minimumFractionDigits 0: without it a currency keeps one decimal, "₹17.0L"
       { notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 }
     : { maximumFractionDigits: 0 };
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: code,
-      currencyDisplay: "narrowSymbol",
-      ...options,
-    });
-  } catch {
-    return new Intl.NumberFormat(locale, options); // unknown code: plain number
+  // signDisplay "negative": an amount that rounds to zero (-0.3, or float
+  // noise such as -1e-12) is shown as "₹0", not "-₹0". Browsers without it
+  // throw on the option, so each step falls back to the one after it.
+  const attempts: Intl.NumberFormatOptions[] = [
+    { style: "currency", currency: code, currencyDisplay: "narrowSymbol", signDisplay: "negative", ...options },
+    { style: "currency", currency: code, currencyDisplay: "narrowSymbol", ...options },
+    options, // unknown code: plain number
+  ];
+  for (const attempt of attempts) {
+    try {
+      return new Intl.NumberFormat(locale, attempt);
+    } catch {
+      // try the next one
+    }
   }
+  return new Intl.NumberFormat(locale);
 }
 
 export function setMoneyCurrency(code: string): void {
@@ -45,6 +51,52 @@ export const money = (n: number | null | undefined): string => moneyFormat.forma
 
 // Short form for small spaces, e.g. 1698859 -> "₹17L" (INR) or "¥1.7M"
 export const moneyShort = (n: number | null | undefined): string => moneyShortFormat.format(n || 0);
+
+/* ------------ Signs of amounts ------------ */
+
+// The sign of an amount AS SHOWN: money() prints whole units, so anything
+// under half a unit (-0.3, or float noise such as 5e-17 left by adding
+// 0.1 + 0.2) is zero. Colours and "+" / "−" follow this, so a figure printed
+// as "₹0" is never red or marked "−".
+export const moneySign = (n: number): -1 | 0 | 1 => (Math.abs(n) < 0.5 || !Number.isFinite(n) ? 0 : n < 0 ? -1 : 1);
+
+// "+₹1,200" / "−₹300" / "₹0". plusSign false: no "+" (only "−" for negatives).
+export function signedMoney(n: number, plusSign = true): string {
+  const s = moneySign(n);
+  return `${s < 0 ? "−" : s > 0 && plusSign ? "+" : ""}${money(Math.abs(n))}`;
+}
+export function signedMoneyShort(n: number, plusSign = true): string {
+  const s = moneySign(n);
+  // (the short form can show a decimal: under half a unit is still "₹0")
+  return `${s < 0 ? "−" : s > 0 && plusSign ? "+" : ""}${moneyShort(s ? Math.abs(n) : 0)}`;
+}
+
+// Round to cents (half away from zero). Adding decimals in binary leaves
+// noise (0.1 + 0.2 = 0.30000000000000004), which made equal income and
+// spending come out as -5e-17: "overspent". Amounts and month totals are
+// rounded with this. The tiny factor stops 1.005 (stored as 1.00499...)
+// from rounding down.
+export function roundCents(n: number): number {
+  if (!Number.isFinite(n)) return n;
+  const r = Math.round(Math.abs(n) * 100 * (1 + Number.EPSILON)) / 100;
+  return n < 0 && r ? -r : r; // never -0
+}
+
+/* ------------ Today ------------ */
+
+// Today's date on the device, "YYYY-MM-DD". Not toISOString(), which gives
+// the date in UTC: in India that is still yesterday until 05:30, and in the
+// Americas it is already tomorrow every evening.
+export function todayIso(now: Date = new Date()): string {
+  const pad = (v: number) => String(v).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+// Today's date on the device as UTC midnight milliseconds, the scale the
+// charts use for record dates ("YYYY-MM-DD" -> Date.UTC)
+export function todayUtcMs(now: Date = new Date()): number {
+  return Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+}
 
 // Run fn only after the caller has stopped calling for `wait` ms
 export const debounce = <A extends unknown[]>(fn: (...args: A) => void, wait = 120) => {

@@ -1,6 +1,6 @@
 import { monthIndex, monthName } from "./insights";
 import type { MarketOrder, Transaction } from "./types";
-import { esc, money, moneyShort } from "./utils";
+import { esc, money, moneyShort, moneySign, signedMoney } from "./utils";
 
 /* =========================================================================
 forecast.ts
@@ -219,7 +219,7 @@ export function simProjections(h: History, start: StartPoint, opts: { cut: numbe
 }
 
 const pctText = (v: number | null) => (v === null ? "–" : `${Math.round(v * 100)}%`);
-const signed = (v: number) => `${v < 0 ? "−" : "+"}${money(Math.abs(v))}`;
+const signed = (v: number) => signedMoney(v);
 
 function sliderMax(h: History): number {
   const top = Math.max(h.income * 0.5, 5000);
@@ -298,14 +298,14 @@ export function simOutputHtml(input: SimInput): string {
   const spend = Math.max(0, scenarioInput.expense - scenarioInput.discretionary * scenarioInput.cut);
   const surplus = scenarioInput.income - spend;
   const rate = scenarioInput.income > 0 ? surplus / scenarioInput.income : null;
-  const lowCash = scenario.find((p) => p.cash < 0 && p.k > 0);
+  const lowCash = scenario.find((p) => moneySign(p.cash) < 0 && p.k > 0);
   const label = `${simState.years} year${simState.years === 1 ? "" : "s"}`;
 
   const cards = [
-    { l: `Net worth in ${label}`, v: money(end.net), s: `${signed(end.net - baseEnd.net)} vs your current path`, c: end.net >= baseEnd.net ? "ov-pos" : "ov-neg" },
-    { l: "Saved a month", v: money(surplus), s: `Savings rate ${pctText(rate)} (now ${pctText(h.savingsRate)})`, c: surplus < 0 ? "ov-neg" : "" },
+    { l: `Net worth in ${label}`, v: money(end.net), s: `${signed(end.net - baseEnd.net)} vs your current path`, c: moneySign(end.net - baseEnd.net) < 0 ? "ov-neg" : "ov-pos" },
+    { l: "Saved a month", v: money(surplus), s: `Savings rate ${pctText(rate)} (now ${pctText(h.savingsRate)})`, c: moneySign(surplus) < 0 ? "ov-neg" : "" },
     { l: "Returns earned", v: money(end.growth), s: `On ${money(input.start.invested + end.contributed)} invested`, c: "" },
-    { l: "Cash at the end", v: money(end.cash), s: lowCash ? `Runs below zero in ${Math.ceil(lowCash.k / 12)} yr: investing more than you save` : "Savings not invested", c: end.cash < 0 ? "ov-neg" : "" },
+    { l: "Cash at the end", v: money(end.cash), s: lowCash ? `Runs below zero in ${Math.ceil(lowCash.k / 12)} yr: investing more than you save` : "Savings not invested", c: moneySign(end.cash) < 0 ? "ov-neg" : "" },
   ];
 
   /* ---- Chart: two lines over the period ---- */
@@ -324,8 +324,10 @@ export function simOutputHtml(input: SimInput): string {
   const zeroY = y(0).toFixed(1);
   const zeroLine = lo < 0 && hi > 0 ? `<line x1="0" y1="${zeroY}" x2="${W}" y2="${zeroY}" stroke="#cbd5e1" vector-effect="non-scaling-stroke"></line>` : "";
   const ticks = Array.from({ length: Math.min(simState.years, 10) + 1 }, (_, i) => Math.round((i * simState.years) / Math.min(simState.years, 10)));
-  const now = new Date();
-  const yearLabel = (yrs: number) => (yrs === 0 ? "Today" : String(now.getUTCFullYear() + yrs));
+  // The year on the device (in UTC it is still last year until 05:30 on
+  // 1 January in India)
+  const thisYear = new Date().getFullYear();
+  const yearLabel = (yrs: number) => (yrs === 0 ? "Today" : String(thisYear + yrs));
   const what = simState.view === "net" ? "Net worth" : "Money saved";
 
   return `
@@ -354,7 +356,7 @@ export function simOutputHtml(input: SimInput): string {
         .map((yy) => {
           const a = scenario[yy * 12]![key];
           const b = baseline[yy * 12]![key];
-          return `<tr><td>${yy} yr (${yearLabel(yy)})</td><td class="num">${esc(money(a))}</td><td class="num">${esc(money(b))}</td><td class="num ${a - b >= 0 ? "ov-pos" : "ov-neg"}">${esc(signed(a - b))}</td></tr>`;
+          return `<tr><td>${yy} yr (${yearLabel(yy)})</td><td class="num">${esc(money(a))}</td><td class="num">${esc(money(b))}</td><td class="num ${moneySign(a - b) < 0 ? "ov-neg" : "ov-pos"}">${esc(signed(a - b))}</td></tr>`;
         })
         .join("")}</tbody>
     </table></div>
