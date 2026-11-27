@@ -32,17 +32,17 @@ export const overviewState: { period: "month" | "year"; month: number | null } =
 };
 
 // Month helpers (monthIndex / monthName are in insights.ts)
-const shortMonth = (i: number): string => `${CONFIG.months[i % 12]} ${String(Math.floor(i / 12)).slice(2)}`;
+export const shortMonth = (i: number): string => `${CONFIG.months[i % 12]} ${String(Math.floor(i / 12)).slice(2)}`;
 const pctText = (v: number): string => `${Math.round(v)}%`;
 const signedShort = (v: number): string => `${v < 0 ? "−" : "+"}${moneyShort(Math.abs(v))}`;
 
 // Records of one module in the chosen currency
-function overviewRecords(key: ModuleKey): Transaction[] {
+export function overviewRecords(key: ModuleKey): Transaction[] {
   return (moduleData[key]?.records || []).filter((r) => r.Currency === activeCurrency);
 }
 
 // Everything the page needs, worked out once per draw
-function overviewData(): OverviewData | null {
+export function overviewData(): OverviewData | null {
   const income = overviewRecords("income");
   const expense = overviewRecords("expense");
   const incM = totalsByMonth(income);
@@ -65,26 +65,26 @@ function overviewData(): OverviewData | null {
 }
 
 // Months of the current period
-function periodMonths(d: OverviewData): number[] {
+export function periodMonths(d: OverviewData): number[] {
   const sel = overviewState.month!;
   if (overviewState.period === "month") return [sel];
   const year = Math.floor(sel / 12);
   return d.months.filter((x) => Math.floor(x.m / 12) === year && x.m <= d.last).map((x) => x.m);
 }
 
-function periodLabel(list: number[]): string {
+export function periodLabel(list: number[]): string {
   if (overviewState.period === "month") return monthName(list[0]!);
   const a = list[0]!;
   const b = list[list.length - 1]!;
   return a === b ? monthName(a) : `${Math.floor(a / 12)} (${CONFIG.months[a % 12]}–${CONFIG.months[b % 12]})`;
 }
 
-function sumOver(map: Map<number, number>, list: number[]): number {
+export function sumOver(map: Map<number, number>, list: number[]): number {
   return list.reduce((s, m) => s + (map.get(m) || 0), 0);
 }
 
 // Share of every 100 earned: "₹12", "<₹1"
-function per100(v: number, income: number): string {
+export function per100(v: number, income: number): string {
   if (!income) return "–";
   const x = (v / income) * 100;
   return x > 0 && x < 0.5 ? `<${money(1)}` : money(Math.round(x));
@@ -296,7 +296,7 @@ export function renderOverview(): void {
 }
 
 // Short notes, most useful first
-function overviewInsights(d: OverviewData, list: number[]): string {
+export function overviewInsights(d: OverviewData, list: number[]): string {
   const notes: string[] = [];
   const add = (tag: string, kind: "warn" | "good" | "info", text: string) => notes.push(`<div class="ov-note"><span class="ov-tag ov-tag-${kind}">${esc(tag)}</span><span>${esc(text)}</span></div>`);
   const last12 = d.months.filter((x) => x.m <= d.bothLast).slice(-12);

@@ -67,14 +67,14 @@ export function resetHeatmap(): void {
 
 // Five upper limits so that roughly a fifth of the spending days falls in
 // each colour (one huge day, like rent, does not make every other day pale)
-function heatLimits(totals: Iterable<number>): number[] {
+export function heatLimits(totals: Iterable<number>): number[] {
     const sorted = [...totals].sort((a, b) => a - b);
     const at = (p: number) => sorted[Math.floor(p * (sorted.length - 1))]!;
     return [at(0.2), at(0.4), at(0.6), at(0.8), sorted[sorted.length - 1]!];
 }
 
 // Level 0-4 of an amount
-function heatLevel(value: number, limits: number[]): number {
+export function heatLevel(value: number, limits: number[]): number {
     const i = limits.findIndex((limit) => value <= limit);
     return i === -1 ? limits.length - 1 : i;
 }

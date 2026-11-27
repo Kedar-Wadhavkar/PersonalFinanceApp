@@ -49,7 +49,7 @@ const MK_CATEGORY_COLORS: Record<string, string> = {
 };
 const mkCatColor = (c: string): string => MK_CATEGORY_COLORS[c] || "#64748b";
 
-const mkState: {
+export const mkState: {
   calYear: number | null;
   category: string;
   treeBy: "invested" | "current";
@@ -78,7 +78,7 @@ const mkState: {
 const mkNorm = (s: unknown): string => String(s ?? "").toLowerCase().replace(/[^a-z0-9%&]/g, "");
 
 // First row (of the top 5) holding all `needed` headings -> { row, cols }
-function mkFindHeader(
+export function mkFindHeader(
   grid: SheetGrid,
   needed: string[],
 ): { row: number; cols: Record<string, number> } | null {
@@ -195,7 +195,7 @@ const mkDays = (a: string, b: string): number => (Date.parse(b) - Date.parse(a))
 const mkToday = (): string => new Date().toISOString().slice(0, 10);
 
 // Annual return of dated cash flows (negative = money in), by bisection
-function mkXirr(flows: CashFlow[]): number | null {
+export function mkXirr(flows: CashFlow[]): number | null {
   if (flows.length < 2 || !flows.some((f) => f.v > 0) || !flows.some((f) => f.v < 0)) return null;
   const t0 = flows[0]!.d;
   const npv = (r: number) => flows.reduce((s, f) => s + f.v / Math.pow(1 + r, mkDays(t0, f.d) / 365), 0);
@@ -214,7 +214,7 @@ function mkXirr(flows: CashFlow[]): number | null {
 type HoldingDraft = Pick<Holding, "name" | "qty" | "invested" | "realised" | "charges" | "lots" | "flows"> &
   Partial<Holding>;
 
-function marketSummary(): MarketSummary {
+export function marketSummary(): MarketSummary {
   const d = data();
   const today = mkToday();
   const map = new Map<string, HoldingDraft>();
@@ -232,9 +232,12 @@ function marketSummary(): MarketSummary {
       h.lots.push({ date: o.date, units: o.units });
       h.flows.push({ d: o.date, v: -o.value });
     } else {
+      // A sell can only take what is held; the proceeds of any extra units
+      // (an order typed twice, a missing buy) are not counted as profit
       const units = Math.min(o.units, h.qty);
       const cost = h.qty ? (h.invested / h.qty) * units : 0;
-      h.realised += o.value - cost;
+      const proceeds = o.units ? (o.value * units) / o.units : 0;
+      h.realised += proceeds - cost;
       h.invested -= cost;
       h.qty -= units;
       h.flows.push({ d: o.date, v: o.value });
@@ -312,12 +315,12 @@ const mkPriceFmt = (): Intl.NumberFormat =>
     maximumFractionDigits: 2,
   });
 let mkPrice: (n: number) => string = (n) => String(n);
-const mkPct = (v: number | null | undefined, digits = 1): string => (v === null || v === undefined ? "–" : `${(v * 100).toFixed(digits)}%`);
-const mkSignPct = (v: number | null): string => (v === null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(1)}%`);
+export const mkPct = (v: number | null | undefined, digits = 1): string => (v === null || v === undefined ? "–" : `${(v * 100).toFixed(digits)}%`);
+export const mkSignPct = (v: number | null): string => (v === null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(1)}%`);
 const mkSigned = (v: number): string => `${v < 0 ? "−" : v > 0 ? "+" : ""}${money(Math.abs(v))}`;
-const mkQty = (q: number): string => (Number.isInteger(Math.round(q * 1000) / 1000) ? String(Math.round(q)) : q.toFixed(3));
+export const mkQty = (q: number): string => (Number.isInteger(Math.round(q * 1000) / 1000) ? String(Math.round(q)) : q.toFixed(3));
 const mkCls = (v: number): string => (v < 0 ? "mk-neg" : v > 0 ? "mk-pos" : "");
-const mkDate = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+export const mkDate = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 
 /* ------------ Drawing ------------ */
 
@@ -463,7 +466,7 @@ function mkTreemapHtml(s: MarketSummary): string {
 }
 
 // Squarified treemap: items [{value}] -> same items with x, y, w, h
-function mkSquarify<I extends { value: number }>(
+export function mkSquarify<I extends { value: number }>(
   items: I[],
   x: number,
   y: number,

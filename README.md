@@ -36,11 +36,25 @@ npm run dev        # http://localhost:5173/PersonalFinanceApp/
 npm run typecheck  # strict TypeScript check
 npm run build      # type check + production build into dist/
 npm run preview    # serve dist/ locally
+npm test           # run the Vitest suite once
+npm run test:watch # re-run tests on save
+npm run coverage   # tests plus a coverage report in coverage/
 ```
 
 The app is plain TypeScript (no framework), bundled by Vite. Because it is
 now built from ES modules, `index.html` no longer opens by double-click: use
 `npm run dev` or the live site.
+
+## Tests
+
+The suite in `tests/` runs with Vitest in a simulated browser (happy-dom), so
+no real browser is needed. It covers the Excel parser (amounts like
+`Rs. 4,500/-` or `(500)`, text dates, headers below the first row, side-by-side
+tables, skipped rows), every calculation behind the KPIs, charts, filters,
+Overview and Market pages, and an end-to-end run that loads real `.xlsx` files
+into the page. Test workbooks are generated inside the tests, so no personal
+data is ever committed. The deploy workflow runs `npm test` before building,
+so a failing test stops the site from updating.
 
 ## Workbook format
 
