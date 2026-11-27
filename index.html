@@ -62,6 +62,7 @@
           <span class="side-label">On this page</span>
           <a class="side-item" href="#secBreakdown"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="{Flow} breakdown">Spending breakdown</span></a>
           <a class="side-item" href="#secTx"><span class="side-dot side-dot-plain"></span><span class="side-name">Transactions</span></a>
+          <a class="side-item" href="#secRecurring"><span class="side-dot side-dot-plain"></span><span class="side-name">Recurring bills &amp; anomalies</span></a>
           <a class="side-item" href="#secShare"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="Share of {Share}">Share of Expenditure</span></a>
           <a class="side-item" href="#secCalendar"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="Daily {flow} calendar">Daily spending calendar</span></a>
           <a class="side-item" href="#secTrend"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="{Flow} trend">Spending trend</span></a>
@@ -321,6 +322,16 @@
         </div>
       
         </section>
+      </section>
+
+      <!-- ===== RECURRING BILLS & ANOMALIES (Expense only, all records of the currency) =====
+           Filled by recurringPanel.ts with the rules in analyzer.ts. -->
+      <section class="card card-gap" id="secRecurring">
+        <div>
+          <div class="graphtitle"><b>Recurring bills &amp; anomalies</b></div>
+          <div class="small">Found in every entry of this currency; the filters above do not apply</div>
+        </div>
+        <div id="recurringBody"></div>
       </section>
 
       <!-- ================================== SHARE OF EXPENDITURE: FOUR HALF DONUTS (own filters) ================= -->

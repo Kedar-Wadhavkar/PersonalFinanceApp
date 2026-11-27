@@ -5,6 +5,7 @@ import { buildFilters } from "./filters";
 import { setupHeatmap } from "./heatmap";
 import { setupLineChart } from "./lineChart";
 import { setupMultiYear } from "./monthlyCompare";
+import { renderRecurring } from "./recurringPanel";
 import { refreshCatalog } from "./state";
 import { scrollTableToTop, sortTableRows } from "./table";
 
@@ -28,4 +29,5 @@ export function rebuildAll(): void {
   setupHeatmap();
   setupLineChart();
   setupDonuts();
+  renderRecurring();
 }

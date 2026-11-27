@@ -3422,3 +3422,134 @@ button.mk-day:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* -------- Recurring bills & anomalies (recurringPanel.ts) -------- */
+
+.rb-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rb-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  min-width: 0;
+}
+
+.rb-stat b {
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.rb-stat:first-child b {
+  color: #b45309;
+}
+
+/* Bills table above, anomalies below: the table needs the full width */
+.rb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* Anomalies in two columns where there is room */
+.rb-anomalies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+  margin-top: 6px;
+}
+
+.rb-scroll {
+  margin-top: 10px;
+}
+
+.rb-scroll {
+  max-height: 360px;
+}
+
+.rb-scroll .rb-table {
+  min-width: 600px;
+}
+
+.rb-table td {
+  vertical-align: top;
+}
+
+.rb-table .rb-num {
+  text-align: right;
+}
+
+.rb-find {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rb-find:hover {
+  text-decoration: underline;
+}
+
+.rb-stale td {
+  color: #94a3b8;
+}
+
+.rb-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.rb-anomaly {
+  margin-top: 4px;
+}
+
+.rb-dot {
+  flex: 0 0 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.rb-high .rb-dot {
+  background: #dc2626;
+}
+
+.rb-more {
+  padding: 6px;
+}
+
+@media (max-width: 1000px) {
+  .rb-anomalies {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .rb-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+#secRecurring[hidden],
+.side-item[href="#secRecurring"][hidden] {
+  display: none;
+}
