@@ -774,7 +774,12 @@ function mkTableHtml(s: MarketSummary): string {
     return "";
   };
   const head = MK_COLUMNS.map(
-    (c) => `<th scope="col" class="${c[2] === "text" ? "" : "num"}"${c[0] === key ? ` aria-sort="${mkState.sortDir < 0 ? "descending" : "ascending"}"` : ""}><button type="button" data-sort="${c[0]}">${esc(c[1])}${c[0] === key ? (mkState.sortDir < 0 ? " ▼" : " ▲") : ""}</button></th>`,
+    // Same header as the Expense transactions table: the whole cell sorts,
+    // and the two-triangle icon lights the direction (see .sortarrow)
+    (c) => {
+      const on = c[0] === key;
+      return `<th scope="col" class="mk-sortable ${c[2] === "text" ? "" : "num"}" data-sort="${c[0]}" data-dir="${on ? (mkState.sortDir < 0 ? "desc" : "asc") : ""}" aria-sort="${on ? (mkState.sortDir < 0 ? "descending" : "ascending") : "none"}"><button type="button" class="sorthead"><span class="sortname">${esc(c[1])}</span><span class="sortarrow" aria-hidden="true"></span></button></th>`;
+    },
   ).join("");
   const body = rows
     .map(
@@ -1005,7 +1010,9 @@ export function setupMarket(): void {
   });
   const body = $("mkBody");
   body.addEventListener("click", (e) => {
-    const t = (e.target as Element).closest<HTMLElement>("button, tr[data-holding]");
+    // A click anywhere in a table heading cell sorts (not only on its text)
+    const target = e.target as Element;
+    const t = target.closest<HTMLElement>("th[data-sort]") ?? target.closest<HTMLElement>("button, tr[data-holding]");
     if (!t) return;
     const d = t.dataset;
     if (d.day) {

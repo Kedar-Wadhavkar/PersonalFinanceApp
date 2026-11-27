@@ -2875,22 +2875,25 @@ main.wrap[hidden] {
   text-align: left;
 }
 
+/* Headings look like the Expense transactions table (global th, .sortable,
+   .sorthead, .sortarrow); only the number columns line up to the right. */
 .mk-table th {
-  position: sticky;
-  top: 0;
-  background: #f8fafc;
-  font-weight: 500;
-  color: #475569;
+  padding: 9px 10px;
   font-size: 13px;
 }
 
-.mk-table th button {
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
+.mk-table th.mk-sortable {
   cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.mk-table th.mk-sortable:hover {
+  background: #eef2f7;
+}
+
+.mk-table th.num .sorthead {
+  justify-content: flex-end;
 }
 
 .mk-table .num {
