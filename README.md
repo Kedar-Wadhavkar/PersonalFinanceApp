@@ -15,7 +15,10 @@ Every push to `main` is built and published to GitHub Pages by
 `.github/workflows/deploy.yml`:
 https://kedar-wadhavkar.github.io/PersonalFinanceApp/
 
-Your workbook is read in the browser only; nothing is uploaded.
+Your workbook is read in the browser only; nothing is uploaded. The built
+site carries a Content Security Policy (see `vite.config.ts`) with
+`connect-src 'none'`, so the browser itself refuses any network request the
+page might try to make: the app has no way to send your data anywhere.
 
 ## How to use
 
