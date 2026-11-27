@@ -26,7 +26,8 @@ matter, so they may sit in the finance workbook or in a separate file):
   Orders (required) .... Date, Order (Buy/Sell), Holding, Units, UnitAvg;
                          optional LotValue, Charges, IndexValue, EqCumUnits
   Holdings (optional) .. Holding plus LTP (latest price); optional Instrument
-                         (older files: Category), Sector, SubSector. Gives the current prices.
+                         (older files: Category), Sector, SubSector, Units
+                         (older files: Qty), Avg. Gives the current prices.
   Dividends (optional) . Date, Holding, Amount (or Dividend)
 
 Quantity, average cost and invested amount are worked out from the orders
@@ -168,7 +169,7 @@ export function parseMarket(sheets: SheetMatrix[]): MarketData | null {
           sector: txt("sector"),
           subSector: txt("subsector"),
           ltp: mkNum(row[c.ltp!]),
-          qty: c.qty === undefined ? null : mkNum(row[c.qty]),
+          qty: c.units !== undefined ? mkNum(row[c.units]) : c.qty === undefined ? null : mkNum(row[c.qty]), // "Qty" = older files
           avg: c.avg === undefined ? null : mkNum(row[c.avg]),
         });
       }
@@ -725,16 +726,16 @@ type HoldingColumn = [keyof Holding, string, ColumnType];
 
 const MK_COLUMNS: HoldingColumn[] = [
   ["name", "Holding", "text"],
-  ["qty", "Qty", "qty"],
+  ["qty", "Units", "qty"],
   ["avg", "Avg cost", "price"],
   ["invested", "Invested", "money"],
   ["ltp", "LTP", "price"],
   ["current", "Current value", "money"],
   ["pnl", "Profit / loss", "signed"],
   ["pct", "P/L %", "pct"],
+  ["xirr", "XIRR", "pct"],
   ["share", "Share", "share"],
   ["ltQty", "Held > 1 year", "lt"],
-  ["xirr", "XIRR", "pct"],
 ];
 
 // The Holdings card: title, Instrument filter row (like the calendar's) and
@@ -805,7 +806,7 @@ function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): str
         // The name is a button, so a holding's buys can be opened from the keyboard too
         return k === "name" ? `<button type="button" class="mk-link" data-holding="${esc(v)}" title="${esc(v)}">${esc(v)}</button>` : esc(v);
       case "qty":
-        return esc(mkQty(v));
+        return esc(Math.round(v).toLocaleString(CONFIG.locale)); // whole units in this table
       case "price":
         return v === null ? `<span class="small">no price</span>` : esc(mkPrice(v));
       case "money":
@@ -846,7 +847,7 @@ function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): str
   return `<div class="mk-tablewrap"><table class="mk-table">
       <thead><tr>${head}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(money(invested))}</td><td></td><td class="num">${esc(money(current))}</td><td class="num ${mkCls(pnl)}">${esc(mkSigned(pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(share))}</td><td></td><td class="num">${esc(mkPct(xirr))}</td></tr></tfoot>
+      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(money(invested))}</td><td></td><td class="num">${esc(money(current))}</td><td class="num ${mkCls(pnl)}">${esc(mkSigned(pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(xirr))}</td><td class="num">${esc(mkPct(share))}</td><td></td></tr></tfoot>
     </table></div>`;
 }
 

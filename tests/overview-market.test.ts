@@ -180,6 +180,14 @@ describe("parseMarket", () => {
     expect(withCategory.info.get("NIFTYBEES")?.category).toBe("ETF");
   });
 
+  it("reads the held units from a Units heading (and still from Qty)", () => {
+    const orders = sheet("Orders", [ORDERS_HEAD, ["01-01-2025", "Buy", "NIFTYBEES", 1, 100]]);
+    const withUnits = parseMarket([orders, sheet("P", [["Holding", "LTP", "Units", "Avg"], ["GIFT", 100, 3, 50]])])!;
+    const withQty = parseMarket([orders, sheet("P", [["Holding", "LTP", "Qty", "Avg"], ["GIFT", 100, 3, 50]])])!;
+    expect(withUnits.info.get("GIFT")?.qty).toBe(3);
+    expect(withQty.info.get("GIFT")?.qty).toBe(3);
+  });
+
   it("returns null without an orders table", () => {
     expect(parseMarket([sheet("Sheet2", [["Holding", "LTP"], ["A", 1]])])).toBeNull();
   });
