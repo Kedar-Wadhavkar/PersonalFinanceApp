@@ -13,7 +13,7 @@ import type {
   SheetGrid,
   SheetMatrix,
 } from "./types";
-import { $, esc, money, moneyShort, setMoneyCurrency } from "./utils";
+import { $, emptyCardHtml, esc, money, moneyShort, setMoneyCurrency } from "./utils";
 
 /* =========================================================================
 market.ts
@@ -37,6 +37,9 @@ price (LTP) and the category come from the holdings table.
 let marketData: MarketData | null = null; // parseMarket() result, null until a file has orders
 export function setMarketData(value: MarketData): void {
   marketData = value;
+}
+export function hasMarketData(): boolean {
+  return marketData !== null;
 }
 
 // Every drawing function below runs only once marketData is set
@@ -329,7 +332,11 @@ function renderMarket(): void {
   const body = $("mkBody");
   if (!marketData) {
     $("mkSub").textContent = "Shares, ETFs and mutual funds";
-    body.innerHTML = `<section class="card"><div class="nodata small">Load your market file (it can be chosen together with the finance workbook). It needs a sheet with Date, Order, Holding, Units and UnitAvg headings. A second sheet with Holding and LTP headings gives today's prices.</div></section>`;
+    body.innerHTML = emptyCardHtml(
+      "Market",
+      "Track your investments",
+      "Load your market file (it can be chosen together with the finance workbook). It needs a sheet with Date, Order, Holding, Units and UnitAvg headings. A second sheet with Holding and LTP headings gives today's prices.",
+    );
     return;
   }
   mkPrice = mkPriceFmt().format;

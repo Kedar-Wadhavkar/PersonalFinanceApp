@@ -84,11 +84,60 @@ describe("the app before a file is loaded", () => {
     expect(text("insights")).toContain("Load a workbook");
     expect($("tbody").children).toHaveLength(0);
   });
+
+  it("shows a welcome card instead of empty charts", () => {
+    const app = document.querySelector(".app")!;
+    expect(app.classList.contains("no-data")).toBe(true);
+    expect(app.classList.contains("module-empty")).toBe(true);
+    expect(visible("moduleEmpty")).toBe(true);
+    expect(text("moduleEmpty")).toContain("See where your money goes");
+    // The Load Excel button there opens the same file input
+    expect($("moduleEmpty").querySelector("label[for='file']")).not.toBeNull();
+    expect($("moduleEmpty").querySelector<HTMLAnchorElement>("a[download]")!.getAttribute("href")).toBe("sample-workbook.xlsx");
+  });
+
+  it("states that the data stays in the browser, in the welcome card and the side bar", () => {
+    expect(text("moduleEmpty")).toContain("Your data stays on this device");
+    expect(text("moduleEmpty")).toContain("Nothing is uploaded");
+    const note = document.querySelector(".side .privacy-note")!;
+    expect(note.textContent).toContain("Private: stays on this device");
+    expect(note.textContent).toContain("never uploaded");
+  });
+
+  it("shows empty states on the Overview and Market pages", () => {
+    click(document.querySelector(".side-item[data-page='overview']"));
+    expect(tight("ovBody")).toContain("Income and spending, side by side".replace(/\s+/g, ""));
+    click(document.querySelector(".side-item[data-page='market']"));
+    expect(text("mkBody")).toContain("Track your investments");
+    expect($("mkBody").querySelector("label[for='file']")).not.toBeNull();
+    click(document.querySelector(".side-item[data-module='expense']"));
+  });
+});
+
+describe("while a workbook is read", () => {
+  it("shows a loading panel, then hides it", async () => {
+    const input = $<HTMLInputElement>("file");
+    Object.defineProperty(input, "files", { value: [await financeWorkbook()], configurable: true });
+    const done = (input.onchange as (e: Event) => Promise<void>)({ target: input } as unknown as Event);
+    expect(visible("loading")).toBe(true);
+    expect(text("loadingText")).toBe("Reading finance.xlsx");
+    expect(text("loading")).toContain("Nothing is uploaded");
+    await done;
+    expect(visible("loading")).toBe(false);
+    expect(document.querySelector(".app")!.hasAttribute("aria-busy")).toBe(false);
+  });
 });
 
 describe("loading a messy workbook", () => {
   beforeAll(async () => {
     await choose(await financeWorkbook());
+  });
+
+  it("replaces the welcome card with the dashboard", () => {
+    const app = document.querySelector(".app")!;
+    expect(app.classList.contains("no-data")).toBe(false);
+    expect(app.classList.contains("module-empty")).toBe(false);
+    expect(visible("moduleEmpty")).toBe(false);
   });
 
   it("opens the Overview when there are both income and expenses", () => {
@@ -194,6 +243,26 @@ describe("loading the market file next to it", () => {
     expect(body).toContain("booked+₹200");
     expect(body).toContain("Chargespaidonallorders:₹5");
   });
+  it("goes back and forth between Market and the module pages", () => {
+    const page = () =>
+      ["modulePage", "overviewPage", "marketPage"].find(visible) + (visible("modulePage") ? ":" + text("pageTitle") : "");
+    const go = (sel: string) => click(document.querySelector(`.side-item${sel}`));
+    // Income was the module shown before Market: it must open again
+    go("[data-module='income']");
+    expect(page()).toBe("modulePage:Income");
+    go("[data-page='market']");
+    expect(page()).toBe("marketPage");
+    go("[data-module='expense']");
+    expect(page()).toBe("modulePage:Expense");
+    go("[data-page='market']");
+    go("[data-module='expense']");
+    expect(page()).toBe("modulePage:Expense");
+    go("[data-page='overview']");
+    go("[data-module='expense']");
+    expect(page()).toBe("modulePage:Expense");
+    go("[data-page='market']");
+    expect(page()).toBe("marketPage");
+  });
 });
 
 describe("files that cannot be read", () => {
@@ -222,5 +291,23 @@ describe("the sample workbook shipped with the app", () => {
     click(document.querySelector(".side-item[data-module='expense']"));
     expect($("err").textContent).toBe("");
     expect(document.querySelectorAll("#tbody tr.vrow").length).toBeGreaterThan(0);
+  });
+});
+
+describe("a workbook with expenses only", () => {
+  it("explains on the Income page which sheet is missing", async () => {
+    await choose(
+      fileOf(
+        await buildXlsx([{ name: "Expense", rows: [["Date", "Amount", "Category", "Mode"], ["01-01-2026", 100, "Food", "Cash"]] }]),
+        "expenses.xlsx",
+      ),
+    );
+    click(document.querySelector(".side-item[data-module='income']"));
+    expect(visible("moduleEmpty")).toBe(true);
+    expect(text("moduleEmpty")).toContain("No income rows yet");
+    expect(text("moduleEmpty")).toContain('no "Income" sheet');
+    expect(document.querySelector(".app")!.classList.contains("no-data")).toBe(false);
+    click(document.querySelector(".side-item[data-module='expense']"));
+    expect(visible("moduleEmpty")).toBe(false);
   });
 });

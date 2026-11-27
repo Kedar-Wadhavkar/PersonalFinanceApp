@@ -68,6 +68,14 @@ export function esc(value: unknown): string {
 // Placeholder shown by lists and charts when nothing is selected
 export const NO_DATA_HTML = '<div class="small nodata">No data selected</div>';
 
+/** A page-level empty state: small label, heading, explanation and,
+    unless `button` is false, a Load Excel button (a label for the file input). */
+export function emptyCardHtml(eyebrow: string, title: string, text: string, button = true): string {
+  return `<section class="card empty-state"><div class="empty-main"><span class="empty-eyebrow">${esc(eyebrow)}</span><h2 class="empty-title">${esc(title)}</h2><p class="empty-text">${esc(text)}</p>${
+    button ? '<div class="empty-actions"><label for="file" class="btn btn-primary" role="button" tabindex="0">Load Excel</label></div>' : ""
+  }</div></section>`;
+}
+
 // Open or close one menu (a filter dropdown .multi or a sort menu
 // .sortwrap). Its button tells screen readers whether it is open.
 export function setMenuOpen(box: Element, open: boolean): void {

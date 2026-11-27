@@ -1,6 +1,7 @@
 import { CONFIG } from "./config";
 import type { FilterName } from "./filterGroup";
 import { applyBarFilter, dashFilters, dashboardMatcher } from "./filters";
+import { updateModuleEmpty } from "./emptyState";
 import { renderInsights } from "./insights";
 import { T } from "./modules";
 import { kpiData, kpiSides, rows, setKpiData, setView, tableRows, upperSort, view } from "./state";
@@ -146,6 +147,9 @@ function bars(containerId: string, data: [string, number][], key: string): void 
     return;
   }
   const max = Math.max(...data.map((x) => x[1]), 1);
+  // At least 6 column widths, so a short list (2 years, 3 categories) has
+  // room for its names instead of 12 narrow columns that cut them off
+  container.style.setProperty("--cols", String(Math.min(12, Math.max(data.length, 6))));
   container.innerHTML =
     yAxisHtml(max) +
     data.map(([name, value]) => barRow(key, name, value, max)).join("") +
@@ -464,4 +468,5 @@ export function render(): void {
     renderSummary();
     renderTable();
     renderInsights();
+    updateModuleEmpty();
 }
