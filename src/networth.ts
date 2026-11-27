@@ -17,7 +17,7 @@ import type {
   NetWorthMonth,
   SheetMatrix,
 } from "./types";
-import { $, emptyCardHtml, esc, money, moneyShort, setMoneyCurrency } from "./utils";
+import { $, emptyCardHtml, esc, money, moneySign, roundCents, setMoneyCurrency, signedMoney, signedMoneyShort, todayIso } from "./utils";
 
 /* =========================================================================
 networth.ts
@@ -194,12 +194,12 @@ export function netWorthMonths({ entries, market, saved, today }: NetWorthInput)
       const value = live ? market.current : marketCostAt(market.orders, end);
       accounts.push({ account: "Market holdings", type: "Market", kind: "asset", group: "market", balance: value, asOf: live ? today : end });
     }
-    const sum = (g: NetWorthGroup) => accounts.filter((a) => a.group === g).reduce((s, a) => s + a.balance, 0);
+    const sum = (g: NetWorthGroup) => roundCents(accounts.filter((a) => a.group === g).reduce((s, a) => s + a.balance, 0));
     const cash = sum("cash");
     const mkt = sum("market");
     const other = sum("other");
     const debt = sum("debt");
-    const assets = cash + mkt + other;
+    const assets = roundCents(cash + mkt + other);
     out.push({
       m,
       cash,
@@ -207,7 +207,7 @@ export function netWorthMonths({ entries, market, saved, today }: NetWorthInput)
       other,
       debt,
       assets,
-      net: assets - debt,
+      net: roundCents(assets - debt),
       saved: saved ? saved.get(m) || 0 : null,
       marketAtCost,
       accounts,
@@ -239,9 +239,9 @@ export function netWorthData(): NetWorthMonth[] {
     const i = totalsByMonth(inc);
     const e = totalsByMonth(exp);
     saved = new Map();
-    for (const m of new Set([...i.keys(), ...e.keys()])) saved.set(m, (i.get(m) || 0) - (e.get(m) || 0));
+    for (const m of new Set([...i.keys(), ...e.keys()])) saved.set(m, roundCents((i.get(m) || 0) - (e.get(m) || 0)));
   }
-  return netWorthMonths({ entries, market, saved, today: new Date().toISOString().slice(0, 10) });
+  return netWorthMonths({ entries, market, saved, today: todayIso() });
 }
 
 /* ------------ Drawing ------------ */
@@ -253,9 +253,10 @@ const GROUPS: { key: Exclude<NetWorthGroup, "debt">; name: string; color: string
 ];
 const DEBT_COLOR = "#be123c";
 
-const signed = (v: number): string => `${v < 0 ? "−" : v > 0 ? "+" : ""}${money(Math.abs(v))}`;
-const signedShort = (v: number): string => `${v < 0 ? "−" : ""}${moneyShort(Math.abs(v))}`;
-const cls = (v: number): string => (v < 0 ? "ov-neg" : v > 0 ? "ov-pos" : "");
+// Sign and colour follow the amount as shown, so "₹0" is never red
+const signed = (v: number): string => signedMoney(v);
+const signedShort = (v: number): string => signedMoneyShort(v, false);
+const cls = (v: number): string => ["ov-neg", "", "ov-pos"][moneySign(v) + 1]!;
 const dmy = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 const pct = (v: number, of: number): string => (of > 0 ? `${Math.round((v / of) * 100)}%` : "–");
 
@@ -409,7 +410,7 @@ export function renderNetWorth(): void {
     const rows = [
       ...GROUPS.map((g) => ({ name: g.name, v: cur[g.key] - prev[g.key] })),
       { name: "Debts", v: prev.debt - cur.debt },
-    ].filter((r) => Math.abs(r.v) > 0.005);
+    ].filter((r) => moneySign(r.v) !== 0);
     const savedHtml =
       cur.saved === null
         ? ""
@@ -440,8 +441,8 @@ export function renderNetWorth(): void {
       if (before !== undefined) {
         const d = a.balance - before;
         const good = a.kind === "debt" ? -d : d;
-        change = Math.abs(d) < 0.005 ? "no change" : signed(d);
-        changeCls = Math.abs(d) < 0.005 ? "" : cls(good);
+        change = moneySign(d) === 0 ? "no change" : signed(d);
+        changeCls = cls(good);
       } else if (prev) change = "new";
       const asOf = a.group !== "market" ? dmy(a.asOf) : cur.marketAtCost ? `at cost, ${dmy(a.asOf)}` : "today's prices";
       return `<tr><td><span class="ov-sw" style="background:${color}"></span>${esc(a.account)}</td><td class="num${a.kind === "debt" ? " nw-debt" : ""}">${esc(a.kind === "debt" ? `−${money(a.balance)}` : money(a.balance))}</td><td class="num ${changeCls}">${esc(change)}</td><td>${esc(a.type)}</td><td>${esc(asOf)}</td></tr>`;

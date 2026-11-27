@@ -429,7 +429,8 @@ describe("the what-if simulator on the Net worth page", () => {
     const out = () => text("nwSimOut");
     const before = out();
     expect(before).toContain("Net worth in 5 years");
-    expect(before).toContain("+₹0 vs your current path");
+    expect(before).toContain("₹0 vs your current path"); // no "+" on a zero difference
+    expect(before).not.toContain("+₹0");
 
     const cut = $<HTMLInputElement>("simCut");
     cut.value = "20";

@@ -3,7 +3,7 @@ import { activeModule, moduleData } from "./modules";
 import { displayDate } from "./settings";
 import { activeCurrency, rows, view } from "./state";
 import type { ModuleKey, Transaction } from "./types";
-import { $, esc, money, moneyShort } from "./utils";
+import { $, esc, money, moneyShort, roundCents } from "./utils";
 
 /* =========================================================================
 insights.ts
@@ -33,6 +33,9 @@ export function totalsByMonth(list: Transaction[]): Map<number, number> {
     const m = monthIndex(r.Date);
     totals.set(m, (totals.get(m) || 0) + r.Amount);
   }
+  // Added in binary, 0.1 + 0.2 is 0.30000000000000004: back to cents, so
+  // the same income and spending give a net of exactly 0
+  for (const [m, v] of totals) totals.set(m, roundCents(v));
   return totals;
 }
 
@@ -100,9 +103,10 @@ export function renderInsights(): void {
     .map((name) => {
       const now = nowCat.get(name) || 0;
       const before = prevCat.get(name) || 0;
-      return { name, now, before, diff: now - before };
+      return { name, now, before, diff: roundCents(now - before) };
     })
-    .filter((m) => m.diff !== 0)
+    // Under half a unit is float noise or too small to show ("+₹0")
+    .filter((m) => Math.abs(m.diff) >= 0.5)
     .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
     .slice(0, 6);
   const maxDiff = Math.max(1, ...moves.map((m) => Math.abs(m.diff)));
@@ -149,7 +153,7 @@ export function renderInsights(): void {
   // income yet is not shown as "no income")
   const lastOf = (list: Transaction[]) => list.reduce((a, r) => Math.max(a, monthIndex(r.Date)), -1);
   const both = Math.min(lastOf(income), lastOf(expense));
-  const sumIn = (list: Transaction[]) => list.reduce((a, r) => a + (monthIndex(r.Date) === both ? r.Amount : 0), 0);
+  const sumIn = (list: Transaction[]) => roundCents(list.reduce((a, r) => a + (monthIndex(r.Date) === both ? r.Amount : 0), 0));
   const inc = sumIn(income);
   const exp = sumIn(expense);
   let monthCard: string;

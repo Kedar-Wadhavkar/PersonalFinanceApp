@@ -2895,6 +2895,10 @@ button.mk-day:focus-visible {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  /* Columns as wide as their content; on a phone the wrapper scrolls
+     sideways. (The page-wide "table-layout: fixed" squeezed the holdings,
+     buy history and dividends tables into "₹…" columns at 360px.) */
+  table-layout: auto;
 }
 
 .mk-table th,
@@ -3027,6 +3031,13 @@ button.mk-day:focus-visible {
 }
 
 .mk-dgroup button {
+  /* The general button padding (9px 11px) pushed the − / + out of this
+     22px box, to its bottom edge: centre it instead */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  vertical-align: middle;
   width: 22px;
   height: 22px;
   border: 1px solid #cbd5e1;
@@ -3519,6 +3530,26 @@ button.mk-day:focus-visible {
   text-decoration: underline;
 }
 
+/* Phones: a long holding name ("ICICI Prudential Multi Asset Fund Direct
+   Growth") is cut with "...", so the figures next to it are still in view
+   (the full name is in the row's tooltip) */
+@media (max-width: 800px) {
+  .mk-table td:first-child,
+  .mk-table th:first-child {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mk-table .mk-link {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* -------- Recurring bills & anomalies (recurringPanel.ts) -------- */
 
 .rb-stats {
@@ -3975,7 +4006,9 @@ button.mk-day:focus-visible {
     grid-template-columns: 1fr 1fr;
   }
 
-  .sim-xaxis span:nth-child(even) {
+  /* Every other year label, but always the last one: it is the year the
+     forecast ends in (5 years: Today, 2028, 2030, 2031) */
+  .sim-xaxis span:nth-child(even):not(:last-child) {
     visibility: hidden;
   }
 }
