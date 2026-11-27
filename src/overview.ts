@@ -23,7 +23,8 @@ chosen in the side bar, and joins them on the calendar month of each record.
 ========================================================================= */
 
 // "page" shown: a module key ("expense", "income") or "overview"
-type PageKey = ModuleKey | "overview" | "market";
+type PageKey = ModuleKey | WidePage;
+export type WidePage = "overview" | "market" | "networth";
 export let activePage: PageKey = "expense";
 
 export const overviewState: { period: "month" | "year"; month: number | null } = {
@@ -378,9 +379,9 @@ export function overviewInsights(d: OverviewData, list: number[]): string {
 
 /* ------------ Switching pages ------------ */
 
-// Show a full-width page ("overview", "market") or, with null, the module pages
-const WIDE_PAGES: Record<"overview" | "market", string> = { overview: "Overview", market: "Market" };
-export function showPage(page: "overview" | "market" | null): void {
+// Show a full-width page ("overview", "market", "networth") or, with null, the module pages
+const WIDE_PAGES: Record<WidePage, string> = { overview: "Overview", market: "Market", networth: "Net worth" };
+export function showPage(page: WidePage | null): void {
   activePage = page || activeModule;
   document.querySelector(".app")!.classList.toggle("is-wide", !!page);
   for (const key of Object.keys(WIDE_PAGES) as (keyof typeof WIDE_PAGES)[]) $(`${key}Page`).hidden = page !== key;

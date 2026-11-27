@@ -264,3 +264,58 @@ export interface MarketSummary {
   bench: { value: number; index: number; date: string } | null;
   noPrice: Holding[];
 }
+
+/* ------------ Net worth ------------ */
+
+/** Asset or debt: debts are subtracted from net worth. */
+export type AccountKind = "asset" | "debt";
+
+/** One row of the Accounts sheet: the balance of an account on a date. */
+export interface AccountEntry {
+  /** "YYYY-MM-DD" */
+  date: string;
+  account: string;
+  /** As typed ("Bank", "PPF", "Loan"); "Other" when empty */
+  type: string;
+  kind: AccountKind;
+  /** Assets as typed (may be negative, e.g. an overdraft); debts as a positive amount owed */
+  balance: number;
+  currency: string;
+}
+
+export interface AccountsData {
+  entries: AccountEntry[];
+  skipped: number;
+  sheetNames: string[];
+}
+
+/** Where an account stands at the end of one month. */
+export interface AccountBalance {
+  account: string;
+  type: string;
+  kind: AccountKind;
+  /** Chart group: "cash", "market", "other" (assets) or "debt" */
+  group: NetWorthGroup;
+  balance: number;
+  /** Date of the row the balance comes from ("today" for the market) */
+  asOf: string;
+}
+
+export type NetWorthGroup = "cash" | "market" | "other" | "debt";
+
+/** Net worth at the end of one month. */
+export interface NetWorthMonth {
+  /** Month index (year*12 + month-1) */
+  m: number;
+  cash: number;
+  market: number;
+  other: number;
+  debt: number;
+  assets: number;
+  net: number;
+  /** Income − expenses of the month (same currency), null without both sheets */
+  saved: number | null;
+  /** Market counted at cost (no price history for past months) */
+  marketAtCost: boolean;
+  accounts: AccountBalance[];
+}
