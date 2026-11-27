@@ -1,10 +1,25 @@
+import { CONFIG } from "./config";
+import { createFilterGroup } from "./filterGroup";
+import { catalog, rows } from "./state";
+import type { FilterName, FilterSelection } from "./filterGroup";
+import type { GroupField, Totals, Transaction } from "./types";
+import { $, NO_DATA_HTML, esc, money } from "./utils";
+
+interface DonutDefinition {
+  key: FilterName;
+  title: string;
+  field: GroupField;
+}
+
+type DonutPart = "selected" | "others";
+
 /* =========================================================================
-   donuts.js
+   donuts.ts
    "Share of Expenditure": four half donuts in a chain
    (Year -> Month -> Category -> Mode). Each donut shows how much of the
    one before it is taken by what is ticked in its own dropdown.
 
-   Filters (from filterGroup.js):
+   Filters (from filterGroup.ts):
    - Years and Months list everything (years newest first, months Jan-Dec).
    - Categories lists only the categories that have spending in the ticked
      years + months, biggest first. Modes lists only the modes that have
@@ -20,7 +35,7 @@
    ========================================================================= */
 
 // The four donuts, in chain order
-const DONUTS = [
+const DONUTS: DonutDefinition[] = [
   { key: "years", title: "Year", field: "Year" },
   { key: "months", title: "Month", field: "Month" },
   { key: "cats", title: "Category", field: "Category" },
@@ -40,7 +55,7 @@ const donutFilters = createFilterGroup({
 /* --------- Starting choice --------- */
 
 // Name with the biggest total in a Map(name -> total). ("" if empty).
-function topOf(map) {
+function topOf(map: Totals): string {
   let best = "";
   let bestTotal = -Infinity;
   map.forEach((total, name) => {
@@ -53,8 +68,8 @@ function topOf(map) {
 }
 
 // Sum of the amounts of the records passing `test`, grouped by `field`
-function totalsBy(field, test) {
-  const totals = new Map();
+function totalsBy(field: GroupField, test: (r: Transaction) => boolean): Totals {
+  const totals: Totals = new Map();
   for (const r of rows) {
     if (test(r)) totals.set(r[field], (totals.get(r[field]) || 0) + r.Amount);
   }
@@ -62,7 +77,7 @@ function totalsBy(field, test) {
 }
 
 // The starting selection: { years, months, cats, modes } (lists of names)
-function donutDefaults() {
+function donutDefaults(): FilterSelection {
   if (!rows.length) return {};
 
   // Walk back from today's month to the first month that has spending
@@ -83,9 +98,9 @@ function donutDefaults() {
     m = today.getMonth();
   }
   const year = String(y);
-  const month = CONFIG.months[m];
+  const month = CONFIG.months[m]!;
 
-  const inPeriod = (r) => r.Year === year && r.Month === month;
+  const inPeriod = (r: Transaction) => r.Year === year && r.Month === month;
   const topCategory = topOf(totalsBy("Category", inPeriod));
   const topMode = topCategory
     ? topOf(totalsBy("Mode", (r) => inPeriod(r) && r.Category === topCategory))
@@ -98,20 +113,20 @@ function donutDefaults() {
   };
 }
 
-function applyDonutDefaults() {
+function applyDonutDefaults(): void {
   resetDonutActive(); // every centre starts on "Selected"
   donutFilters.init(donutDefaults());
 }
 
 // After a file is loaded
-function setupDonuts() {
+export function setupDonuts(): void {
   setupDonutClicks();
   applyDonutDefaults();
   renderDonuts();
 }
 
 // The Reset button of this section: back to the starting choice
-function resetDonuts() {
+export function resetDonuts(): void {
   applyDonutDefaults();
   renderDonuts();
 }
@@ -119,7 +134,7 @@ function resetDonuts() {
 /* --------- Layout (sticky filters) --------- */
 
 // Donuts per row right now. Set in CSS (--donut-cols: 4, 2 on phones).
-function donutCols() {
+function donutCols(): number {
   const cols = parseInt(getComputedStyle($("donutsLast")).getPropertyValue("--donut-cols"), 10);
   return cols > 0 ? cols : 4;
 }
@@ -129,7 +144,7 @@ let drawnDonutCols = 0;
 
 // After a resize: redraw only if the number of donuts per row changed
 // (the last row must stay in #donutsLast for the sticky filters)
-function relayoutDonuts() {
+export function relayoutDonuts(): void {
   if (donutFilters.years && donutCols() !== drawnDonutCols) renderDonuts();
 }
 
@@ -140,7 +155,7 @@ const DONUT_SIZE = { width: 200, height: 104, cx: 100, cy: 100, outer: 92, inner
 
 // Point on a circle of radius r at fraction t of the half circle
 // (t = 0: left end, t = 0.5: top, t = 1: right end)
-function arcPoint(r, t) {
+function arcPoint(r: number, t: number): [number, number] {
   const angle = Math.PI * (1 - t);
   const { cx, cy } = DONUT_SIZE;
   return [cx + r * Math.cos(angle), cy - r * Math.sin(angle)];
@@ -148,9 +163,9 @@ function arcPoint(r, t) {
 
 // SVG path of the ring piece from fraction t0 to t1 (left -> right over
 // the top). Never more than half a circle, so the "large arc" flag is 0.
-function ringPath(t0, t1) {
+function ringPath(t0: number, t1: number): string {
   const { outer, inner } = DONUT_SIZE;
-  const f = (n) => n.toFixed(2);
+  const f = (n: number) => n.toFixed(2);
   const [x0, y0] = arcPoint(outer, t0);
   const [x1, y1] = arcPoint(outer, t1);
   const [x2, y2] = arcPoint(inner, t1);
@@ -162,11 +177,11 @@ function ringPath(t0, t1) {
 }
 
 // Text for what a dropdown has ticked: "None", "All", "2026", "3 of 6"
-function donutChoiceText(name) {
+function donutChoiceText(name: FilterName): string {
   const picked = donutFilters[name].values();
   if (!picked.length) return "None";
   if (picked.length === donutFilters.items[name].length) return "All";
-  if (picked.length === 1) return picked[0];
+  if (picked.length === 1) return picked[0]!;
   return `${picked.length} of ${donutFilters.items[name].length}`;
 }
 
@@ -175,7 +190,7 @@ const percentFormat = new Intl.NumberFormat(CONFIG.locale, {
   style: "percent",
   maximumFractionDigits: 1,
 });
-const percentText = (share) => percentFormat.format(share);
+const percentText = (share: number): string => percentFormat.format(share);
 
 /*
 // The items each part of a donut, for the hover text:
@@ -184,11 +199,11 @@ const percentText = (share) => percentFormat.format(share);
 // Listed in the order of the dropdowns: years newest first, months
 // Jan -> Dec, categories and modes biggest first.
 */
-function donutItemLists(name) {
+function donutItemLists(name: FilterName): { selected: string; others: string } {
   const picked = donutFilters[name].set();
   const items = donutFilters.items[name];
   // One item per line (a stacked list in the tooltip)
-  const list = (arr) => (arr.length ? arr.join("\n") : "(none)");
+  const list = (arr: string[]) => (arr.length ? arr.join("\n") : "(none)");
   return {
     selected: list(items.filter((v) => picked.has(v))),
     others: list(items.filter((v) => !picked.has(v))),
@@ -200,19 +215,21 @@ function donutItemLists(name) {
 // Which part each donut shows in its centre: "selected" (the default) or
 // "others". Clicking a part switches it. Any filter change goes back to
 // "selected" (see onDonutFilterChange / applyDonutDefaults).
-const donutActive = {};
+const donutActive: Partial<Record<FilterName, DonutPart>> = {};
 
 // The figures of the last draw, per donut, so a click only redraws that
 // donut – no pass over the records
-const donutFigures = {};
+const donutFigures: Partial<
+  Record<FilterName, { selected: number; total: number; noSelection: boolean }>
+> = {};
 
 // Back to the default (selected part shown) for every donut
-function resetDonutActive() {
+function resetDonutActive(): void {
   DONUTS.forEach((d) => (donutActive[d.key] = "selected"));
 }
 
 // Redraw one donut after one of its parts was clicked
-function showDonutPart(key, part) {
+function showDonutPart(key: FilterName, part: DonutPart): void {
   donutActive[key] = part;
   const d = DONUTS.find((x) => x.key === key);
   const f = donutFigures[key];
@@ -220,19 +237,20 @@ function showDonutPart(key, part) {
   if (!d || !f || !old) return;
   old.outerHTML = donutHtml(d, f.selected, f.total, f.noSelection);
   // Keyboard users keep their place: focus the part they chose
-  document.querySelector(`.donut[data-key="${key}"] [data-part="${part}"]`)?.focus();
+  document.querySelector<SVGElement>(`.donut[data-key="${key}"] [data-part="${part}"]`)?.focus();
 }
 
 // One click / key handler per container (not one per part)
-function setupDonutClicks() {
-  const pick = (e) => {
-    const part = e.target.closest("[data-part]");
+function setupDonutClicks(): void {
+  const pick = (e: Event) => {
+    const part = (e.target as Element).closest<SVGElement>("[data-part]");
     if (!part) return;
-    showDonutPart(part.closest(".donut").dataset.key, part.dataset.part);
+    const donut = part.closest<HTMLElement>(".donut")!;
+    showDonutPart(donut.dataset.key as FilterName, part.dataset.part as DonutPart);
   };
-  const onKey = (e) => {
+  const onKey = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
-      if (!e.target.closest("[data-part]")) return;
+      if (!(e.target as Element).closest("[data-part]")) return;
       e.preventDefault(); // Space must not scroll the page
       pick(e);
     }
@@ -250,7 +268,7 @@ function setupDonutClicks() {
 // The two parts are buttons: the centre shows the share and amount of the
 // active one (donutActive), which also gets the outline.
 */
-function donutHtml(d, selected, total, noSelection) {
+function donutHtml(d: DonutDefinition, selected: number, total: number, noSelection: boolean): string {
   const C = CONFIG.donutColors;
   const choice = donutChoiceText(d.key);
   const lists = donutItemLists(d.key);
@@ -276,7 +294,7 @@ function donutHtml(d, selected, total, noSelection) {
 
   // One clickable part. The active one gets the outline. Keyboard: Tab to
   // it, Enter or Space to show it (see setupDonutClicks).
-  const partPath = (part, t0, t1, fill, tip) => {
+  const partPath = (part: DonutPart, t0: number, t1: number, fill: string, tip: string) => {
     const on = part === active;
     const label = part === "selected" ? "Show selected" : "Show others";
     const edge = on ? ` stroke="${C.outline}" stroke-width="1.2" stroke-linejoin="round"` : "";
@@ -284,9 +302,9 @@ function donutHtml(d, selected, total, noSelection) {
   };
 
   // Centre: what the active part holds (grey: nothing)
-  let label;
-  let centreShare;
-  let centreAmount;
+  let label: string;
+  let centreShare: number;
+  let centreAmount: number;
   if (noSelection) {
     label = "Nothing selected";
     centreShare = 0;
@@ -333,7 +351,7 @@ function donutHtml(d, selected, total, noSelection) {
 
 /* ------- Main render ------- */
 
-function renderDonuts() {
+function renderDonuts(): void {
   const box = $("donuts");
   const last = $("donutsLast");
 

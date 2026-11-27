@@ -1,5 +1,12 @@
+import { CONFIG } from "./config";
+import { createFilterGroup } from "./filterGroup";
+import { T } from "./modules";
+import { catalog, rows } from "./state";
+import type { Transaction } from "./types";
+import { $, NO_DATA_HTML, esc, money } from "./utils";
+
 /* =========================================================================
-heatmap.js
+heatmap.ts
 "Daily spending calendar": one year as 12 small month grids.
 Each day is coloured by how much was spent that day. Weeks run from
 Sunday (left column) to Saturday (right column).
@@ -31,7 +38,7 @@ const heatTitleFormat = new Intl.DateTimeFormat(CONFIG.locale, {
 });
 
 // Transactions of each drawn day: "2025-03-18" -> [records]
-let heatDays = new Map();
+let heatDays = new Map<string, Transaction[]>();
 
 /* ------------ Filters ------------ */
 
@@ -45,13 +52,13 @@ const heatFilters = createFilterGroup({
   onChange: renderHeatmap,
 });
 
-function setupHeatmap() {
+export function setupHeatmap(): void {
   heatFilters.init();
   renderHeatmap();
 }
 
 // The Reset button of this section
-function resetHeatmap() {
+export function resetHeatmap(): void {
   heatFilters.init();
   renderHeatmap();
 }
@@ -60,25 +67,25 @@ function resetHeatmap() {
 
 // Five upper limits so that roughly a fifth of the spending days falls in
 // each colour (one huge day, like rent, does not make every other day pale)
-function heatLimits(totals) {
+function heatLimits(totals: Iterable<number>): number[] {
     const sorted = [...totals].sort((a, b) => a - b);
-    const at = (p) => sorted[Math.floor(p * (sorted.length - 1))];
-    return [at(0.2), at(0.4), at(0.6), at(0.8), sorted[sorted.length - 1]];
+    const at = (p: number) => sorted[Math.floor(p * (sorted.length - 1))]!;
+    return [at(0.2), at(0.4), at(0.6), at(0.8), sorted[sorted.length - 1]!];
 }
 
 // Level 0-4 of an amount
-function heatLevel(value, limits) {
+function heatLevel(value: number, limits: number[]): number {
     const i = limits.findIndex((limit) => value <= limit);
     return i === -1 ? limits.length - 1 : i;
 }
 
 /* ------------ Drawing ------------ */
 
-const pad2 = (n) => String(n).padStart(2, "0");
+const pad2 = (n: number): string => String(n).padStart(2, "0");
 
 // Months per row right now. Set in CSS (--heat-cols: 6 on desktop, fewer on
 // smaller screens), so the split below always matches what is on screen.
-function heatCols() {
+function heatCols(): number {
   const cols = parseInt(getComputedStyle($("heatmapLast")).getPropertyValue("--heat-cols"), 10);
   return cols > 0 ? cols : 6;
 }
@@ -88,11 +95,11 @@ let drawnHeatCols = 0;
 
 // After a resize: redraw only if the number of months per row changed
 // (the last row must stay in #heatmapLast for the sticky filters)
-function relayoutHeatmap() {
+export function relayoutHeatmap(): void {
   if (heatFilters.years && heatCols() !== drawnHeatCols) renderHeatmap();
 }
 
-function renderHeatmap() {
+function renderHeatmap(): void {
     const box = $("heatmap");
     const last = $("heatmapLast");
     const legend = $("heatmapLegend");
@@ -111,7 +118,7 @@ function renderHeatmap() {
 
     // Group the matching transactions by day
     const prefix = year + "-";
-    const dayTotal = new Map();
+    const dayTotal = new Map<string, number>();
     for (const r of rows) {
         if (
             r.Date.startsWith(prefix) &&
@@ -133,7 +140,7 @@ function renderHeatmap() {
     // HTML of one month grid (m = 0 for January), with its figures under it:
     // total spent, number of transactions and number of days without spending
     // (days that have not come yet are not counted)
-    const monthHtml = (m) => {
+    const monthHtml = (m: number) => {
         const monthName = CONFIG.months[m];
         const firstWeekday = new Date(y, m, 1).getDay(); // 0 = Sunday
         const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -156,7 +163,7 @@ function renderHeatmap() {
             if (new Date(y, m, d).getTime() <= todayMs) noSpendDays++;
             html += `<span class="heat-day heat-none" title="${esc(nice)} · ${T("none")}">${d}</span>`;
         } else {
-            const count = heatDays.get(date).length;
+            const count = heatDays.get(date)!.length;
             monthTotal += total;
             monthCount += count;
             const level = heatLevel(total, limits);
@@ -168,7 +175,7 @@ function renderHeatmap() {
 
         // Figures under the month (not for a month that has not started yet)
         if (new Date(y, m, 1).getTime() <= todayMs) {
-            const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+            const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
             html += `<div class="heat-month-foot"><div class="heat-month-total">${money(monthTotal)}</div><div>${plural(monthCount, "transaction")}</div><div>${plural(noSpendDays, T("noDay"))}</div></div>`;
         }
         return html + `</div>`;
@@ -179,7 +186,7 @@ function renderHeatmap() {
     // row goes in #heatmapLast, so the filters are released where it begins.
     // With a single row, everything is in #heatmapLast (nothing sticks).
     // Rows are centred by CSS, so a half-full last row sits in the middle.
-    const chosen = [];
+    const chosen: number[] = [];
     CONFIG.months.forEach((monthName, m) => {
         if (months.has(monthName)) chosen.push(m);
     });
@@ -214,13 +221,13 @@ function renderHeatmap() {
 
 /* ------------ Pop-up with one day's transactions ------------ */
 
-function openDayDialog(date) {
+function openDayDialog(date: string): void {
     const list = [...(heatDays.get(date) || [])].sort(
         (a, b) => b.Amount - a.Amount,
     );
     if (!list.length) return;
 
-    const [yy, mm, dd] = date.split("-").map(Number);
+    const [yy, mm, dd] = date.split("-").map(Number) as [number, number, number];
     $("dayDialogTitle").textContent = heatTitleFormat.format(new Date(yy, mm - 1, dd));
     const total = list.reduce((s, r) => s + r.Amount, 0);
     $("dayDialogSummary").textContent = `${list.length} transaction${list.length === 1 ? "" : "s"} · ${money(total)}`;
@@ -232,21 +239,21 @@ function openDayDialog(date) {
         )
         .join("");
 
-    const dialog = $("dayDialog");
-    dialog.querySelector(".day-dialog-body").scrollTop = 0;
+    const dialog = $<HTMLDialogElement>("dayDialog");
+    dialog.querySelector(".day-dialog-body")!.scrollTop = 0;
     dialog.showModal();
 }
 
-function setupHeatmapClicks() {
+export function setupHeatmapClicks(): void {
     // One click handler for the whole calendar (only coloured days are buttons)
-    const onDayClick = (e) => {
-        const day = e.target.closest("button[data-date]");
-        if (day) openDayDialog(day.dataset.date);
+    const onDayClick = (e: MouseEvent) => {
+        const day = (e.target as Element).closest<HTMLElement>("button[data-date]");
+        if (day) openDayDialog(day.dataset.date!);
     };
     $("heatmap").onclick = onDayClick;
     $("heatmapLast").onclick = onDayClick;
 
-    const dialog = $("dayDialog");
+    const dialog = $<HTMLDialogElement>("dayDialog");
     $("dayDialogClose").onclick = () => dialog.close();
     // A click on the dark area around the box closes it (Esc also works)
     dialog.onclick = (e) => {

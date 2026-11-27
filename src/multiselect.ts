@@ -1,7 +1,29 @@
+import { $, esc } from "./utils";
+
+export interface MultiSelectOptions {
+  menuId: string;
+  toggleId: string;
+  cls: string;
+  values: string[];
+  onChange: () => void;
+  limit?: number;
+  headerLabel?: string;
+  latestOnly?: boolean;
+}
+
+/** What createMultiSelect() returns: read or change the selection. */
+export interface MultiSelect {
+  values(): string[];
+  set(): Set<string>;
+  checkOnly(value: string | number): void;
+  setValues(list: (string | number)[]): void;
+  reset(): void;
+}
+
 /* =========================================================================
-multiselect.js
+multiselect.ts
 ONE reusable checkbox dropdown, used by all 20 filter menus (4 in each of
-the 5 sections). The linked lists are managed by filterGroup.js.
+the 5 sections). The linked lists are managed by filterGroup.ts.
 
 Two kinds of menu:
 - plain (limit = Infinity): an "All" box + every item ticked.
@@ -25,7 +47,7 @@ options:
 - latestOnly       - header box counts as ticked only when the FIRST
                      `limit` items are the ticked ones ("Latest" behaviour)
 */
-function createMultiSelect({
+export function createMultiSelect({
     menuId,
     toggleId,
     cls,
@@ -34,7 +56,7 @@ function createMultiSelect({
     limit = Infinity,
     headerLabel = "All",
     latestOnly = false,
-}) {
+}: MultiSelectOptions): MultiSelect {
     const menu = $(menuId);
     const toggle = $(toggleId);
     const limited = limit !== Infinity;
@@ -56,14 +78,14 @@ function createMultiSelect({
             )
             .join("");
 
-    const headerBox = menu.querySelector(".ms-header");
-    const boxes = [...menu.querySelectorAll("." + cls)];
+    const headerBox = menu.querySelector<HTMLInputElement>(".ms-header")!;
+    const boxes = [...menu.querySelectorAll<HTMLInputElement>("." + cls)];
     const target = Math.min(limit, boxes.length);
 
     // The selection is remembered here and refreshed by sync(), so reading it
     // never has to scan the checkboxes on the page.
-    let selectedValues = [];
-    let selectedSet = new Set();
+    let selectedValues: string[] = [];
+    let selectedSet = new Set<string>();
 
     // Refresh the remembered selection, the header box and the button text
     function sync() {
@@ -110,7 +132,7 @@ function createMultiSelect({
     };
 
     // The x button of a limited menu clears everything
-    const clear = menu.querySelector(".menu-clear");
+    const clear = menu.querySelector<HTMLButtonElement>(".menu-clear");
     if (clear) {
         clear.onclick = () => {
             boxes.forEach((b) => (b.checked = false));
@@ -125,7 +147,7 @@ function createMultiSelect({
                 const chosen = boxes.filter((b) => b.checked);
                 if (chosen.length > limit) {
                     const others = chosen.filter((b) => b !== box);
-                    others[others.length - 1].checked = false;
+                    others[others.length - 1]!.checked = false;
                 }
             }
             changed();
@@ -142,14 +164,14 @@ function createMultiSelect({
         set: () => selectedSet,
 
         // Tick only "value" (used when a bar is clicked). Does not call onChange.
-        checkOnly(value) {
+        checkOnly(value: string | number) {
             boxes.forEach((b) => (b.checked = b.value === String(value)));
             sync();
         },
 
         // Tick exactly the items in `list` (others un-ticked). Does not call
         // onChange. Used when a menu is rebuilt and must keep the user's ticks.
-        setValues(list) {
+        setValues(list: (string | number)[]) {
             const wanted = new Set(list.map(String));
             boxes.forEach((b) => (b.checked = wanted.has(b.value)));
             sync();

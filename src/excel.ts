@@ -1,5 +1,20 @@
+import { CONFIG } from "./config";
+import { MODULES } from "./modules";
+import { emptySettings } from "./state";
+import type {
+  CellValue,
+  ModuleDefinition,
+  ModuleParseResult,
+  Settings,
+  SettingsListKey,
+  SheetGrid,
+  SheetMatrix,
+  SkippedRows,
+  Transaction,
+} from "./types";
+
 /* ========================================================
-   excel.js
+   excel.ts
    Reads an .xlsx file in the browser with no libraries.
 
    An .xlsx file is a ZIP of XML files. The steps are:
@@ -28,15 +43,15 @@
    ======================================================== */
 
 // Read 16- / 32-bit little-endian numbers from a DataView
-function u16(view, offset) {
+function u16(view: DataView, offset: number): number {
   return view.getUint16(offset, true);
 }
-function u32(view, offset) {
+function u32(view: DataView, offset: number): number {
   return view.getUint32(offset, true);
 }
 
 // Only these files are needed; everything else in the ZIP is skipped
-function isNeededXlsxFile(name) {
+function isNeededXlsxFile(name: string): boolean {
   return (
     name === "xl/sharedStrings.xml" ||
     name === "xl/workbook.xml" ||
@@ -48,7 +63,7 @@ function isNeededXlsxFile(name) {
 /* -------- Step 1: unzip -------- */
 
 // Returns { "path/in/zip.xml": Uint8Array, ... } for the needed files
-async function unzipXlsx(buf) {
+async function unzipXlsx(buf: ArrayBuffer): Promise<Record<string, Uint8Array>> {
   const bytes = new Uint8Array(buf);
   const view = new DataView(buf);
   const decoder = new TextDecoder();
@@ -69,7 +84,7 @@ async function unzipXlsx(buf) {
 
   const count = u16(view, eocd + 10); // number of files in the ZIP
   let pos = u32(view, eocd + 16); // where the file list starts
-  const files = {};
+  const files: Record<string, Uint8Array> = {};
 
   for (let n = 0; n < count; n++) {
     if (u32(view, pos) !== 0x02014b50) throw Error("Invalid ZIP directory");
@@ -93,7 +108,7 @@ async function unzipXlsx(buf) {
 
     if (method === 8) {
       // Compressed: let the browser inflate it
-      const stream = new Blob([raw])
+      const stream = new Blob([raw as Uint8Array<ArrayBuffer>])
         .stream()
         .pipeThrough(new DecompressionStream("deflate-raw"));
       raw = new Uint8Array(await new Response(stream).arrayBuffer());
@@ -110,14 +125,14 @@ async function unzipXlsx(buf) {
 
 // Strip XML tags and decode XML entities (named and numeric) in ONE pass,
 // so "&amp;lt;" correctly becomes the text "&lt;" and not "<"
-function xmlText(s) {
+function xmlText(s: string): string {
   // Fast path: most values (numbers, plain words) contain no tags or entities
   if (!s.includes("<") && !s.includes("&")) return s;
-  const named = { lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" };
+  const named: Record<string, string> = { lt: "<", gt: ">", quot: '"', apos: "'", amp: "&" };
   return s
     .replace(/<[^>]+>/g, "")
-    .replace(/&(#x[0-9a-f]+|#\d+|lt|gt|quot|apos|amp);/gi, (all, code) => {
-      if (code[0] !== "#") return named[code.toLowerCase()];
+    .replace(/&(#x[0-9a-f]+|#\d+|lt|gt|quot|apos|amp);/gi, (all: string, code: string) => {
+      if (code[0] !== "#") return named[code.toLowerCase()]!;
       const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
       try {
         return String.fromCodePoint(n);
@@ -128,7 +143,7 @@ function xmlText(s) {
 }
 
 // Column letters -> number: "A" -> 0, "B" -> 1, "AA" -> 26
-function colIndex(letters) {
+function colIndex(letters: string): number {
   let n = 0;
   for (let i = 0; i < letters.length; i++) {
     n = n * 26 + letters.charCodeAt(i) - 64;
@@ -137,24 +152,27 @@ function colIndex(letters) {
 }
 
 // Value of one attribute in the text of an XML tag: xmlAttr('a="1" b="2"', "b") -> "2"
-function xmlAttr(attrs, name) {
+function xmlAttr(attrs: string, name: string): string {
   const m = attrs.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`));
   return m ? xmlText(m[1]) : "";
 }
 
 // The sheets in tab order, with their names: [{ name, file }]
-function sheetList(zip, decoder) {
+function sheetList(
+  zip: Record<string, Uint8Array>,
+  decoder: TextDecoder,
+): { name: string; file: string }[] {
   const files = Object.keys(zip)
     .filter((f) => /^xl\/worksheets\/sheet\d+\.xml$/.test(f))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const read = (path) => (zip[path] ? decoder.decode(zip[path]) : "");
+  const read = (path: string) => (zip[path] ? decoder.decode(zip[path]) : "");
 
   // workbook.xml names the sheets; its .rels file says which file is which
-  const targets = new Map();
+  const targets = new Map<string, string>();
   for (const m of read("xl/_rels/workbook.xml.rels").matchAll(/<Relationship\b([^>]*)>/g)) {
     targets.set(xmlAttr(m[1], "Id"), xmlAttr(m[1], "Target"));
   }
-  const list = [];
+  const list: { name: string; file: string }[] = [];
   for (const m of read("xl/workbook.xml").matchAll(/<sheet\b([^>]*)>/g)) {
     const target = targets.get(xmlAttr(m[1], "r:id"));
     if (!target) continue;
@@ -166,13 +184,13 @@ function sheetList(zip, decoder) {
 }
 
 // Returns one entry per sheet: { name, grid }, grid[rowIndex][columnIndex] = cell value
-async function workbookMatrices(buf) {
+export async function workbookMatrices(buf: ArrayBuffer): Promise<SheetMatrix[]> {
   const zip = await unzipXlsx(buf);
   const decoder = new TextDecoder();
 
   // Text cells point into a shared list of strings. Phonetic (furigana)
   // text is not part of the cell's text, so it is left out.
-  let sharedStrings = [];
+  let sharedStrings: string[] = [];
   if (zip["xl/sharedStrings.xml"]) {
     const xml = decoder.decode(zip["xl/sharedStrings.xml"]);
     sharedStrings = [...xml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map((m) =>
@@ -182,10 +200,10 @@ async function workbookMatrices(buf) {
     );
   }
 
-  const sheets = [];
+  const sheets: SheetMatrix[] = [];
   for (const { name, file } of sheetList(zip, decoder)) {
-    const xml = decoder.decode(zip[file]);
-    const grid = [];
+    const xml = decoder.decode(zip[file]!);
+    const grid: SheetGrid = [];
 
     // Every <c...>...</c> (or self-closing <c.../>) is one cell
     const cellPattern = /<c\b([^>]*?)\/>|<c\b([^>]*)>([\s\S]*?)<\/c>/g;
@@ -203,7 +221,7 @@ async function workbookMatrices(buf) {
       const type = typeMatch ? typeMatch[1] : "n";
 
       const valueMatch = body.match(/<v>([\s\S]*?)<\/v>/);
-      let value = valueMatch ? xmlText(valueMatch[1]) : "";
+      let value: CellValue = valueMatch ? xmlText(valueMatch[1]) : "";
 
       if (type === "s") value = sharedStrings[Number(value)] ?? "";
       else if (type === "inlineStr") value = xmlText(body);
@@ -224,9 +242,10 @@ const HEADER_SEARCH_ROWS = 5;
 // Text dates: dd-mm-yyyy (also dd/mm/yyyy, dd.mm.yyyy) and yyyy-mm-dd, with
 // an optional time after them. Built with Date.UTC, so the day never shifts
 // with the time zone. Returns null for impossible dates (31-02-2025).
-function parseTextDate(text) {
+function parseTextDate(text: unknown): Date | null {
   const s = String(text).trim();
-  let y, m, d, parts;
+  let y: number, m: number, d: number;
+  let parts: RegExpMatchArray | null;
   if ((parts = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})(?:[ T].*)?$/))) {
     d = Number(parts[1]);
     m = Number(parts[2]);
@@ -248,7 +267,7 @@ function parseTextDate(text) {
 
 // A cell -> a UTC Date, or null. Excel stores dates as day numbers; text
 // dates go through parseTextDate().
-function excelDate(v) {
+export function excelDate(v: unknown): Date | null {
   if (typeof v === "number") {
     return v > 0
       ? new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86400000))
@@ -261,14 +280,14 @@ function excelDate(v) {
   // Month written as a word ("14 Mar 2025"): keep the calendar day as typed
   if (/[a-z]{3}/i.test(s)) {
     const d = new Date(s);
-    if (!isNaN(d)) return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    if (!isNaN(d.getTime())) return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   }
   return null;
 }
 
 // A cell -> a number, null when it is empty, NaN when it is not a number.
 // Numbers are used as they are; text like "1,234 INR" is cleaned first.
-function parseAmount(raw) {
+export function parseAmount(raw: unknown): number | null {
   if (typeof raw === "number") return raw;
   const text = String(raw ?? "").trim();
   if (!text) return null;
@@ -279,7 +298,7 @@ function parseAmount(raw) {
 /* ------------ Column headings and currencies ------------ */
 
 // Heading (letters only, lower case) -> the column it stands for
-const COLUMN_ALIASES = {
+const COLUMN_ALIASES: Record<string, string> = {
   date: "date",
   particular: "particular",
   particulars: "particular",
@@ -297,24 +316,24 @@ const COLUMN_ALIASES = {
 };
 
 // "Particulars " -> "particular". Unknown headings keep their own name.
-function columnKey(heading) {
+function columnKey(heading: unknown): string {
   const letters = String(heading ?? "").toLowerCase().replace(/[^a-z]/g, "");
   return COLUMN_ALIASES[letters] || letters;
 }
 
 // "¥" -> "JPY", "inr" -> "INR", "" -> ""
-function normalizeCurrency(raw) {
+function normalizeCurrency(raw: unknown): string {
   const text = String(raw ?? "").trim();
   return text ? CONFIG.currencySymbols[text] || text.toUpperCase() : "";
 }
 
 // Does the cell hold a real value (not empty, not only spaces)?
-const hasValue = (v) => v !== undefined && v !== null && String(v).trim() !== "";
+const hasValue = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== "";
 
 /* ------------ Settings sheet ------------ */
 
 // Heading of a list on the Settings sheet -> its name in `settings`
-const SETTINGS_HEADINGS = [
+const SETTINGS_HEADINGS: [RegExp, SettingsListKey][] = [
   [/^currenc/, "currencies"],
   [/^ignorecolumn/, "ignoreColumns"],
   [/^ignoredate/, "ignoreDates"],
@@ -324,7 +343,7 @@ const SETTINGS_HEADINGS = [
 ];
 
 // Headings sit in one of the first rows; each list runs down its column
-function parseSettings(grid) {
+function parseSettings(grid: SheetGrid): Settings {
   const settings = emptySettings();
   for (let hr = 0; hr < Math.min(HEADER_SEARCH_ROWS, grid.length); hr++) {
     const headerRow = grid[hr] || [];
@@ -360,15 +379,15 @@ function parseSettings(grid) {
 // sheets = [{ name, grid }]. Returns { records, skipped, settings }:
 // skipped = { count, samples } counts the rows that have an amount but no
 // readable date, or an amount that is not a number.
-// module = one entry of MODULES (modules.js): which sheet holds its table
+// module = one entry of MODULES (modules.ts): which sheet holds its table
 // and which sheet its settings.
-function parseMatrices(sheets, module) {
-  const records = [];
-  const skipped = { count: 0, samples: [] };
+export function parseMatrices(sheets: SheetMatrix[], module: ModuleDefinition): ModuleParseResult {
+  const records: Transaction[] = [];
+  const skipped: SkippedRows = { count: 0, samples: [] };
 
   // "Expense Settings", "expense_settings" -> "expense_settings"
-  const norm = (name) => String(name).trim().toLowerCase().replace(/[\s_-]+/g, "_");
-  let settingsSheet = null;
+  const norm = (name: string) => String(name).trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  let settingsSheet: SheetMatrix | undefined;
   for (const wanted of module.settingsSheets) {
     settingsSheet = sheets.find((s) => norm(s.name) === wanted);
     if (settingsSheet) break;
@@ -387,7 +406,7 @@ function parseMatrices(sheets, module) {
       : [];
 
   // What not to read (exact matches, upper/lower case ignored)
-  const lower = (list) => new Set(list.map((v) => v.toLowerCase()));
+  const lower = (list: string[]) => new Set(list.map((v) => v.toLowerCase()));
   const ignore = {
     columns: new Set(settings.ignoreColumns.map(columnKey)),
     dates: new Set(settings.ignoreDates),
@@ -411,7 +430,7 @@ function parseMatrices(sheets, module) {
 
         // A table is the run of headings up to an empty cell, or up to a
         // second "Date" (which starts the next table)
-        const cols = Object.create(null); // column key -> column number
+        const cols: Record<string, number> = Object.create(null); // column key -> column number
         const start = c;
         let j = c;
         for (; j < headerRow.length && hasValue(headerRow[j]); j++) {
@@ -428,7 +447,7 @@ function parseMatrices(sheets, module) {
         ignore.columns.forEach((k) => {
           if (k !== "date" && k !== "amount") delete cols[k];
         });
-        const cell = (cells, key) => (key in cols ? cells[cols[key]] : undefined);
+        const cell = (cells: CellValue[], key: string): CellValue | undefined => (key in cols ? cells[cols[key]] : undefined);
 
         // Year heading in the row above the header (4 digits starting 19 or 20)
         // (over the first column of the table, or else over its Date column)
@@ -476,19 +495,19 @@ function parseMatrices(sheets, module) {
           if (ignore.dates.has(iso)) continue;
 
           const principal = parseAmount(cell(cells, "principal"));
-          const record = {
+          const record: Transaction = {
             Date: iso,
             Particular: particular,
             Amount: (amount || 0) + (credit || 0),
-            Principal: Number.isFinite(principal) ? principal : null,
+            Principal: principal !== null && Number.isFinite(principal) ? principal : null,
             Category: category,
             Mode: mode,
             Currency: currency,
             Year: year,
+            // Worked out once here so filtering never has to re-parse dates
+            Month: CONFIG.months[date.getUTCMonth()],
+            Search: "",
           };
-
-          // Worked out once here so filtering never has to re-parse dates
-          record.Month = CONFIG.months[date.getUTCMonth()];
           record.Search = [
             record.Date,
             record.Particular,

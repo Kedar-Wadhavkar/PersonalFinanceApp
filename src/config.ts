@@ -1,15 +1,15 @@
 /* ========================================================
-   config.js
+   config.ts
    Everything you are likely to change when you swap in your own data.
    ======================================================== */
 
-const CONFIG = {
+export const CONFIG = {
   // --- Number formatting ---
   locale: "en-IN", // dates and percentages
   currency: "INR", // used until a workbook says otherwise
   // Number layout (digit grouping, e.g. 12,34,567) of every currency. To give
   // one currency its own layout: currencyLocales: { JPY: "ja-JP" }
-  currencyLocales: {},
+  currencyLocales: {} as Record<string, string>,
   currencyLocaleDefault: "en-IN",
   // Symbols written in the Currency column / Settings sheet -> currency code
   // (a currency written as a code, e.g. "JPY", needs no entry)
@@ -21,7 +21,7 @@ const CONFIG = {
     "£": "GBP",
     Rs: "INR",
     "Rs.": "INR",
-  },
+  } as Record<string, string>,
 
   // --- Calendar ---
   months: [
@@ -41,7 +41,7 @@ const CONFIG = {
   yearColors: {
     monthly: ["#fde68a", "#fcd34d", "#fbbf24", "#f59e0b", "#d97706"], // yellow
     category: ["#86efac", "#4ade80", "#22c55e", "#16a34a", "#15803d"], // green
-  },
+  } as Record<"monthly" | "category", string[]>,
   mutedColor: "#e2e8f0", // colour of bars that are not highlighted
 
   // --- Share of Expenditure (half donuts) ---
