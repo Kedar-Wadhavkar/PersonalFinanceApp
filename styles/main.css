@@ -1903,6 +1903,17 @@ body:has(.sortwrap.open) .to-top {
   border-radius: 3px;
 }
 
+/* Module icons (in each module's colour); a module not built yet is grey */
+.side-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.side-item:disabled .side-icon {
+  color: #94a3b8 !important;
+}
+
 .side-dot-plain {
   background: #cbd5e1;
 }
