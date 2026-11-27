@@ -12,6 +12,8 @@ import { renderLineChart, setupLineChartEvents } from "./lineChart";
 import { parseMarket, selectMarket, setMarketData, setupMarket, updateMarketCount } from "./market";
 import { resetSimulator } from "./forecast";
 import { nwState, parseAccounts, selectNetWorth, setAccountsData, setupNetWorth, updateNetWorthCount } from "./networth";
+import { canKeepFiles, pickFiles, readFiles, RefreshError, saveFiles, savedFiles, type KeptFile } from "./fileHandles";
+import { restoreFilters, snapshotFilters } from "./filterGroup";
 import { MODULES, MODULE_KEYS, activeModule, moduleData, selectModule, setupModuleNav } from "./modules";
 import { renderMultiYear, resetMultiYear } from "./monthlyCompare";
 import { activePage, overviewState, selectOverview, setupOverview, showPage } from "./overview";
@@ -34,16 +36,20 @@ This is the entry point that Vite builds (see index.html).
 // Market) that the chosen files do not contain keeps what was loaded before.
 const loadedFiles = { finance: "", market: "" };
 
-$<HTMLInputElement>("file").onchange = async (e) => {
-  const input = e.target as HTMLInputElement;
-  const files = [...(input.files ?? [])];
-  if (!files.length) return;
+// keep = true is the Refresh button: the same files read again. The page
+// shown, the filters, the search text and the Overview / Net worth month stay
+// as they are; only the data underneath is replaced.
+async function loadFiles(files: File[], keep = false): Promise<boolean> {
+  if (!files.length) return false;
+  const filtersBefore = keep ? snapshotFilters() : null;
+  const searchBefore = $<HTMLInputElement>("search").value;
 
   // Show that a (large) file is being read: the button text, and a
   // panel over the page that also says the file stays on this device
   const label = $("uploadText");
+  const uploadBox = document.querySelector(".upload")!;
   label.textContent = "Loading...";
-  input.closest(".upload")!.setAttribute("aria-busy", "true");
+  uploadBox.setAttribute("aria-busy", "true");
   $("loadingText").textContent = files.length > 1 ? `Reading ${files.length} files` : `Reading ${files[0]!.name}`;
   $("loading").hidden = false;
   document.querySelector(".app")!.setAttribute("aria-busy", "true");
@@ -89,8 +95,25 @@ $<HTMLInputElement>("file").onchange = async (e) => {
     $("fileName").title = shown;
     updateMarketCount();
     updateNetWorthCount();
-    resetSimulator();
+    if (!keep) resetSimulator();
 
+    if (keep) {
+      // Same page, same filters
+      if (wasPage === "overview") selectOverview();
+      else if (wasPage === "networth") selectNetWorth();
+      else if (wasPage === "market") selectMarket();
+      else {
+        const stay = parsed[activeModule].records.length;
+        selectModule(stay ? activeModule : (MODULE_KEYS.find((k) => parsed[k].records.length) ?? activeModule));
+        if (stay) {
+          restoreFilters(filtersBefore!);
+          $<HTMLInputElement>("search").value = searchBefore;
+          updateSearchClear();
+          if (searchBefore) render();
+        }
+      }
+      return true;
+    }
     if (total) {
       // Stay on the module shown, unless it has nothing in this workbook
       const stay = parsed[activeModule].records.length;
@@ -110,22 +133,94 @@ $<HTMLInputElement>("file").onchange = async (e) => {
       selectOverview();
     }
     window.scrollTo({ top: 0 });
+    return true;
   } catch (x: unknown) {
+    if (keep) {
+      // A refresh that fails leaves the page as it is and says why next to the button
+      setRefreshNote(`Could not refresh: ${(x instanceof Error && x.message) || x}`);
+      return false;
+    }
     if (activePage !== activeModule) showPage(null); // the message is on the module page
     $("err").innerHTML =
       '<div class="error">Could not read the workbook. Use an .xlsx file with "Expense" and/or "Income" sheets, each with Date, Amount, Category and Mode headings (plus Particulars, Currency, Credit, Principle if you have them) in one of the first 5 rows, and a year heading above each block. Technical detail: ' +
         esc((x instanceof Error && x.message) || x) +
       "</div>";
+    return false;
   } finally {
     label.textContent = "Load Excel";
-    input.closest(".upload")!.removeAttribute("aria-busy");
+    uploadBox.removeAttribute("aria-busy");
     $("loading").hidden = true;
     document.querySelector(".app")!.removeAttribute("aria-busy");
-    // Clear the choice, so picking the SAME file again (e.g. after editing
-    // it in Excel) still triggers a reload
-    input.value = "";
   }
+}
+
+$<HTMLInputElement>("file").onchange = async (e) => {
+  const input = e.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  await loadFiles(files);
+  // Clear the choice, so picking the SAME file again (e.g. after editing
+  // it in Excel) still triggers a reload
+  input.value = "";
 };
+
+/* ------------ Refresh: read the same files again ------------ */
+
+// Where the browser can keep file handles (Edge, Chrome), Load Excel uses the
+// file picker that gives them, and Refresh re-reads those files in place. See
+// fileHandles.ts. Elsewhere the normal file input is used and Refresh is hidden.
+let keptFiles: KeptFile[] = [];
+const refreshButton = $<HTMLButtonElement>("refreshFiles");
+
+function setRefreshNote(text: string): void {
+  const note = $("refreshNote");
+  note.textContent = text;
+  note.hidden = !text;
+}
+
+if (canKeepFiles()) {
+  let pickerFailed = false;
+  $("file").addEventListener("click", (e) => {
+    if (pickerFailed) return; // the picker did not work here: use the normal dialog
+    e.preventDefault();
+    void (async () => {
+      let picked: KeptFile[] | null;
+      try {
+        picked = await pickFiles();
+      } catch {
+        pickerFailed = true;
+        $("file").click();
+        return;
+      }
+      if (!picked) return;
+      setRefreshNote("");
+      if (await loadFiles(await Promise.all(picked.map((h) => h.getFile())))) {
+        keptFiles = picked;
+        refreshButton.hidden = false;
+        await saveFiles(picked);
+      }
+    })();
+  });
+
+  void savedFiles().then((saved) => {
+    keptFiles = saved;
+    refreshButton.hidden = !saved.length;
+  });
+
+  refreshButton.onclick = async () => {
+    if (!keptFiles.length) return;
+    setRefreshNote("");
+    try {
+      const files = await readFiles(keptFiles);
+      // With nothing loaded yet this just opens the files again
+      const loaded = Boolean(loadedFiles.finance || loadedFiles.market);
+      if (await loadFiles(files, loaded)) {
+        setRefreshNote(`Refreshed ${new Date().toLocaleTimeString(CONFIG.locale, { hour: "2-digit", minute: "2-digit" })}`);
+      }
+    } catch (x) {
+      setRefreshNote(`Could not refresh: ${x instanceof RefreshError ? x.message : (x instanceof Error && x.message) || x}`);
+    }
+  };
+}
 
 // Fetch the reader as soon as a file might be picked: pointer over or focus
 // on Load Excel, or the browser is idle after start-up

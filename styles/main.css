@@ -163,6 +163,42 @@ header {
   cursor: pointer;
 }
 
+/* Load Excel with the Refresh button next to it */
+.upload-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.upload-row .upload {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--ctl-border, #cbd5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ctl-text, #334155);
+  font-size: 13px;
+}
+
+.refresh-btn[hidden] {
+  display: none;
+}
+
+.refresh-btn:hover {
+  background: #f8fafc;
+}
+
+.refresh-note {
+  margin-top: -4px;
+}
+
 .wrap {
   padding: 20px;
 }

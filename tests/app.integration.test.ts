@@ -454,3 +454,21 @@ describe("the what-if simulator on the Net worth page", () => {
     expect(document.querySelector(`#simChips .sim-chip[data-cat='${name}']`)!.getAttribute("aria-pressed")).toBe("true");
   });
 });
+
+describe("Refresh (the same files read again)", () => {
+  it("puts the filters back after the files are read again", async () => {
+    await choose(await financeWorkbook());
+    const { dashFilters } = await import("../src/filters");
+    const { restoreFilters, snapshotFilters } = await import("../src/filterGroup");
+    dashFilters.months.setValues(["Feb"]);
+    const snapshot = snapshotFilters();
+    await choose(await financeWorkbook()); // a plain load starts from the default filters
+    expect(dashFilters.months.values().length).toBeGreaterThan(1);
+    restoreFilters(snapshot);
+    expect(dashFilters.months.values()).toEqual(["Feb"]);
+  });
+
+  it("hides the Refresh button where the browser cannot keep file handles", () => {
+    expect($("refreshFiles").hidden).toBe(true);
+  });
+});

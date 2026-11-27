@@ -29,24 +29,32 @@
           <b class="side-title">Finance Analytics</b>
           <div class="small" id="fileName">No workbook loaded</div>
         </div>
-        <label class="upload">
-          <span id="uploadText">Load Excel</span>
-          <input
-            id="file"
-            aria-label="Choose Excel workbooks (the finance workbook and/or the market file)"
-            type="file"
-            accept=".xlsx"
-            multiple
-            class="visually-hidden"
-          />
-        </label>
+        <div class="upload-row">
+          <label class="upload">
+            <span id="uploadText">Load Excel</span>
+            <input
+              id="file"
+              aria-label="Choose Excel workbooks (the finance workbook and/or the market file)"
+              type="file"
+              accept=".xlsx"
+              multiple
+              class="visually-hidden"
+            />
+          </label>
+          <!-- Only where the browser can keep file handles (Edge, Chrome): see fileHandles.ts -->
+          <button type="button" id="refreshFiles" class="refresh-btn" title="Read the same files again" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><path d="M21 4v5h-5"></path></svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+        <div class="small refresh-note" id="refreshNote" role="status" aria-live="polite" hidden></div>
         <!-- Always visible: what happens to the data. More in the welcome card. -->
         <details class="privacy-note">
           <summary>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
             <span>Private: stays on this device</span>
           </summary>
-          <p>Files are read on this device and never uploaded or sent anywhere. Nothing is saved: refresh or close the tab and the data is gone.</p>
+          <p>Files are read on this device and never uploaded or sent anywhere. Your data is not saved: reload or close the tab and it is gone. In Edge and Chrome the app also remembers which files you picked (only the file references, not what is in them), so Refresh can read them again.</p>
         </details>
         <!-- Filled by settings.ts after a workbook is loaded -->
         <div id="currency" class="currency-radios" role="radiogroup" aria-label="Currency" hidden></div>
