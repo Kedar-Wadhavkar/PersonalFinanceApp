@@ -19,7 +19,8 @@ let moneyShortFormat: Intl.NumberFormat;
 function makeMoneyFormat(code: string, compact: boolean): Intl.NumberFormat {
   const locale = CONFIG.currencyLocales[code] || CONFIG.currencyLocaleDefault;
   const options: Intl.NumberFormatOptions = compact
-    ? { notation: "compact", maximumFractionDigits: 1 }
+    ? // minimumFractionDigits 0: without it a currency keeps one decimal, "₹17.0L"
+      { notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 }
     : { maximumFractionDigits: 0 };
   try {
     return new Intl.NumberFormat(locale, {

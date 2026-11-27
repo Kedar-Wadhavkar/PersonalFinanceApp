@@ -37,7 +37,7 @@ export function totalsByMonth(list: Transaction[]): Map<number, number> {
 }
 
 // "▲ 18% more than Sep 2026" / "▼ 7% less ..." / "" when not comparable
-function changeText(now: number, before: number | undefined, beforeName: string): string {
+export function changeText(now: number, before: number | undefined, beforeName: string): string {
   if (!before) return "";
   const pct = Math.round(((now - before) / Math.abs(before)) * 100);
   if (pct === 0) return `Same as ${beforeName}`;

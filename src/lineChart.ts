@@ -49,7 +49,7 @@ const MONTHS_BACK: Partial<Record<LineRange, number>> = { "1Y": 12, "3Y": 36, "5
 
 // What the user has chosen. Kept when another workbook / currency is loaded
 // (as far as those categories still exist).
-const lineState: { cats: string[]; range: LineRange; normalize: boolean; focus: string | null } = {
+export const lineState: { cats: string[]; range: LineRange; normalize: boolean; focus: string | null } = {
   cats: [],
   range: "Max",
   normalize: false,
@@ -62,17 +62,17 @@ let lineCategories: string[] = [];
 /* ------------ Dates ------------ */
 
 // "2026-10-22" -> milliseconds (UTC midnight)
-const isoMs = (iso: string): number => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+export const isoMs = (iso: string): number => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
 
 // Month number counted from year 0: year * 12 + month (0 = January)
-const monthOf = (t: number): number => {
+export const monthOf = (t: number): number => {
   const d = new Date(t);
   return d.getUTCFullYear() * 12 + d.getUTCMonth();
 };
-const monthStartMs = (m: number): number => Date.UTC(Math.floor(m / 12), m % 12, 1);
+export const monthStartMs = (m: number): number => Date.UTC(Math.floor(m / 12), m % 12, 1);
 
 // "22 Oct"
-const dayText = (t: number): string => {
+export const dayText = (t: number): string => {
   const d = new Date(t);
   return `${d.getUTCDate()} ${CONFIG.months[d.getUTCMonth()]}`;
 };
@@ -86,7 +86,7 @@ const dayText = (t: number): string => {
   indexOf(t) }. The period is [t0, t1); bucket i is [bucketStart(i),
   bucketEnd(i)). `clipped`: the data starts later than the time frame asks.
 */
-function lineWindow(range: LineRange, firstT: number, lastT: number): LineWindow {
+export function lineWindow(range: LineRange, firstT: number, lastT: number): LineWindow {
   if (range === "3M") {
     // 13 weeks, counted back from the last date, so every week is complete
     const wanted = lastT - 90 * DAY_MS;
@@ -130,7 +130,7 @@ function lineWindow(range: LineRange, firstT: number, lastT: number): LineWindow
 // A round number at or above v (1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8 or 10 times
 // a power of ten): close to v, so the line fills the chart, and a quarter of it
 // is still a clean number for the grid lines
-function niceMax(v: number): number {
+export function niceMax(v: number): number {
   if (!(v > 0)) return 1;
   const power = Math.pow(10, Math.floor(Math.log10(v)));
   const f = v / power;
@@ -140,7 +140,7 @@ function niceMax(v: number): number {
 
 // X axis label candidates: one per month (or per year), centred on the part
 // of it that is inside [t0, t1). Returns [{ t, text }].
-function axisCandidates(t0: number, t1: number, byYear: boolean): { t: number; text: string }[] {
+export function axisCandidates(t0: number, t1: number, byYear: boolean): { t: number; text: string }[] {
   const out: { t: number; text: string }[] = [];
   if (byYear) {
     const last = new Date(t1 - 1).getUTCFullYear();
@@ -165,7 +165,7 @@ function axisCandidates(t0: number, t1: number, byYear: boolean): { t: number; t
 
 // Keep every k-th label (counted from the last one) with the smallest k that
 // leaves no two labels touching. Each label: { x, w } (centre, width in px).
-function thinLabels<L extends { x: number; w: number }>(labels: L[], gap = 8): L[] {
+export function thinLabels<L extends { x: number; w: number }>(labels: L[], gap = 8): L[] {
   for (let k = 1; k <= labels.length; k++) {
     const kept = labels.filter((_, i) => (labels.length - 1 - i) % k === 0);
     if (kept.every((c, i) => i === 0 || c.x - kept[i - 1]!.x >= (c.w + kept[i - 1]!.w) / 2 + gap)) {

@@ -55,7 +55,7 @@ const donutFilters = createFilterGroup({
 /* --------- Starting choice --------- */
 
 // Name with the biggest total in a Map(name -> total). ("" if empty).
-function topOf(map: Totals): string {
+export function topOf(map: Totals): string {
   let best = "";
   let bestTotal = -Infinity;
   map.forEach((total, name) => {
@@ -68,7 +68,7 @@ function topOf(map: Totals): string {
 }
 
 // Sum of the amounts of the records passing `test`, grouped by `field`
-function totalsBy(field: GroupField, test: (r: Transaction) => boolean): Totals {
+export function totalsBy(field: GroupField, test: (r: Transaction) => boolean): Totals {
   const totals: Totals = new Map();
   for (const r of rows) {
     if (test(r)) totals.set(r[field], (totals.get(r[field]) || 0) + r.Amount);
@@ -77,7 +77,7 @@ function totalsBy(field: GroupField, test: (r: Transaction) => boolean): Totals 
 }
 
 // The starting selection: { years, months, cats, modes } (lists of names)
-function donutDefaults(): FilterSelection {
+export function donutDefaults(): FilterSelection {
   if (!rows.length) return {};
 
   // Walk back from today's month to the first month that has spending
@@ -155,7 +155,7 @@ const DONUT_SIZE = { width: 200, height: 104, cx: 100, cy: 100, outer: 92, inner
 
 // Point on a circle of radius r at fraction t of the half circle
 // (t = 0: left end, t = 0.5: top, t = 1: right end)
-function arcPoint(r: number, t: number): [number, number] {
+export function arcPoint(r: number, t: number): [number, number] {
   const angle = Math.PI * (1 - t);
   const { cx, cy } = DONUT_SIZE;
   return [cx + r * Math.cos(angle), cy - r * Math.sin(angle)];
@@ -163,7 +163,7 @@ function arcPoint(r: number, t: number): [number, number] {
 
 // SVG path of the ring piece from fraction t0 to t1 (left -> right over
 // the top). Never more than half a circle, so the "large arc" flag is 0.
-function ringPath(t0: number, t1: number): string {
+export function ringPath(t0: number, t1: number): string {
   const { outer, inner } = DONUT_SIZE;
   const f = (n: number) => n.toFixed(2);
   const [x0, y0] = arcPoint(outer, t0);

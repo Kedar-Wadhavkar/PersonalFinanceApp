@@ -92,7 +92,7 @@ export function setupBarFilterResets(): void {
 /* --------- Sorting the bar lists --------- */
 
 // Sort [name, amount] pairs according to the list's sort settings
-function sortPairs(data: [string, number][], kind: BarListKind): [string, number][] {
+export function sortPairs(data: [string, number][], kind: BarListKind): [string, number][] {
   const state = upperSort[kind];
   const out = [...data];
   const sign = state.dir === "asc" ? 1 : -1;
@@ -255,7 +255,7 @@ export function redrawAreas(): void {
 }
 
 // The Monthly list is special: always Jan-Dec order, hides empty months
-function monthPairs(): [string, number][] {
+export function monthPairs(): [string, number][] {
     const totals = view.groups.Month;
     const shown = CONFIG.months
       .map((name): [string, number] => [name, totals.get(name) || 0])
@@ -303,7 +303,7 @@ export function setupBarClicks(): void {
 /* ------------ Main render ------------ */
 
 // Filter the records AND add them up in ONE pass over the table order
-function computeView(): void {
+export function computeView(): void {
     const match = dashboardMatcher();
     const records = [];
     const byCategory: Totals = new Map();
@@ -344,7 +344,8 @@ export function computeKpis(): void {
     for (const r of rows) if (r.Date > latest) latest = r.Date;
     const latestDate = latest ? new Date(latest + "T00:00:00Z") : new Date();
     const thisYear = String(latestDate.getUTCFullYear());
-    const thisMonth = CONFIG.months[latestDate.getUTCMonth()];
+    const thisMonth = CONFIG.months[latestDate.getUTCMonth()]!;
+    const latestMonth = latestDate.toISOString().slice(0, 7); // "2026-01"
     const monthsWithData = new Set<string>(); // "2025-Mar", ... for the monthly average
     const categories: Totals = new Map(); // category -> total, all years
     const yearCategories: Totals = new Map(); // category -> total, this year only
@@ -363,8 +364,10 @@ export function computeKpis(): void {
                 r.Category,
                 (yearCategories.get(r.Category) || 0) + amount,
             );
-            if (r.Month === thisMonth) monthSum += amount;
         }
+        // The month card is a calendar month ("Jan 2026"), so it goes by the
+        // date: a January bill kept under last year's heading still counts
+        if (r.Date.startsWith(latestMonth)) monthSum += amount;
     }
 
     setKpiData({
@@ -376,7 +379,7 @@ export function computeKpis(): void {
 }
 
 // The category with the biggest total -> [name, total] (or ["", 0])
-function topEntry(totals: Totals): [string, number] {
+export function topEntry(totals: Totals): [string, number] {
     let best: [string, number] = ["", 0];
     for (const entry of totals) if (entry[1] > best[1]) best = entry;
     return best;
@@ -385,7 +388,7 @@ function topEntry(totals: Totals): [string, number] {
 // Two figures for each of the four cards. Each figure is [label, value],
 // worked out from `kpiData` (all records, filters ignored).
 // Card i shows KPI_SETS[kpiSides[i]][i].
-const KPI_SETS: Record<KpiSide, () => [string, string | number][]> = {
+export const KPI_SETS: Record<KpiSide, () => [string, string | number][]> = {
     overall: () => {
         const k = kpiData;
         const [topName, topTotal] = topEntry(k.categories);
