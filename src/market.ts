@@ -371,10 +371,11 @@ function renderMarket(): void {
     ${mkCalendar()}
     <section class="card card-gap" id="mkTreeCard">${mkTreemapHtml(s)}</section>
     <section class="card card-gap" id="mkBarsCard">${mkBarsHtml(s)}</section>
-    <section class="card card-gap" id="mkTableCard">${mkTableHtml(s)}</section>
+    <section class="card card-gap" id="mkTableCard">${mkTableHtml()}</section>
     <section class="card card-gap" id="mkHistory">${mkHistoryHtml(s)}</section>
     <section class="card card-gap" id="mkDividends">${mkDividendsHtml()}</section>`;
   setupMkCalendar();
+  setupMkTableFilter();
   mkLayoutTreemap(s);
 }
 
@@ -724,7 +725,6 @@ type HoldingColumn = [keyof Holding, string, ColumnType];
 
 const MK_COLUMNS: HoldingColumn[] = [
   ["name", "Holding", "text"],
-  ["category", "Instrument", "text"],
   ["qty", "Qty", "qty"],
   ["avg", "Avg cost", "price"],
   ["invested", "Invested", "money"],
@@ -737,9 +737,58 @@ const MK_COLUMNS: HoldingColumn[] = [
   ["xirr", "XIRR", "pct"],
 ];
 
-function mkTableHtml(s: MarketSummary): string {
+// The Holdings card: title, Instrument filter row (like the calendar's) and
+// the table itself, which is the only part redrawn on a sort or a filter.
+function mkTableHtml(): string {
+  return `<div class="graphtitle"><b>Holdings</b></div>
+    <div class="small">Quantity and cost from your orders, price from the holdings sheet. Click a column to sort, a row to see its buys.</div>
+    <div class="filters chart-filters" id="mkhBar">
+      <div class="field"><span class="small field-label" id="mkhInstLabel">Instrument</span>
+        <div id="mkhInstMulti" class="multi">
+          <button type="button" id="mkhInstToggle" aria-labelledby="mkhInstLabel mkhInstToggle">All selected ▾</button>
+          <div id="mkhInstMenu" class="multi-menu"></div>
+        </div>
+      </div>
+      <button type="button" id="mkhReset">Reset</button>
+    </div>
+    <div id="mkhBody"></div>`;
+}
+
+let mkhMenu: MultiSelect | null = null;
+let mkhChoice: string[] | null = null; // ticked instruments, kept when the page is redrawn
+
+function setupMkTableFilter(): void {
+  const values = [...new Set(marketSummary().held.map((h) => h.category))].sort((a, b) => a.localeCompare(b));
+  mkhMenu = createMultiSelect({
+    menuId: "mkhInstMenu",
+    toggleId: "mkhInstToggle",
+    cls: "mkhInstCheck",
+    values,
+    onChange: () => {
+      mkhChoice = mkhMenu!.values();
+      drawMkTable();
+    },
+  });
+  const kept = mkhChoice?.filter((v) => values.includes(v)) ?? [];
+  if (kept.length) mkhMenu.setValues(kept);
+  wireMultiToggles(["mkhInstMulti"]);
+  $("mkhReset").onclick = () => {
+    mkhChoice = null;
+    setupMkTableFilter();
+  };
+  drawMkTable();
+}
+
+function drawMkTable(): void {
+  $("mkhBody").innerHTML = mkTableBodyHtml(marketSummary(), mkhMenu ? mkhMenu.set() : null);
+}
+
+function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): string {
   const key = mkState.sortKey as keyof Holding;
-  const rows = [...s.held].sort((a, b) => {
+  const shown = instruments ? s.held.filter((h) => instruments.has(h.category)) : s.held;
+  if (!shown.length) return NO_DATA_HTML;
+  const filtered = instruments !== null && instruments.size < new Set(s.held.map((h) => h.category)).size;
+  const rows = [...shown].sort((a, b) => {
     const x = a[key] as string | number | null;
     const y = b[key] as string | number | null;
     // Empty values (no price, no XIRR) go last in either direction. They
@@ -753,7 +802,6 @@ function mkTableHtml(s: MarketSummary): string {
     const v = h[k] as never;
     switch (type) {
       case "text":
-        if (k === "category") return `<span class="ov-sw" style="background:${mkCatColor(v)}"></span>${esc(v)}`;
         // The name is a button, so a holding's buys can be opened from the keyboard too
         return k === "name" ? `<button type="button" class="mk-link" data-holding="${esc(v)}" title="${esc(v)}">${esc(v)}</button>` : esc(v);
       case "qty":
@@ -786,13 +834,19 @@ function mkTableHtml(s: MarketSummary): string {
       (h) => `<tr data-holding="${esc(h.name)}">${MK_COLUMNS.map((c) => `<td class="${c[2] === "text" ? "" : "num"}">${cell(h, c)}</td>`).join("")}</tr>`,
     )
     .join("");
-  const p = s.invested ? s.pnl / s.invested : 0;
-  return `<div class="graphtitle"><b>Holdings</b></div>
-    <div class="small">Quantity and cost from your orders, price from the holdings sheet. Click a column to sort, a row to see its buys.</div>
-    <div class="mk-tablewrap"><table class="mk-table">
+  // Total of the holdings shown (with every instrument ticked: the whole portfolio)
+  const invested = filtered ? shown.reduce((t, h) => t + h.invested, 0) : s.invested;
+  const current = filtered ? shown.reduce((t, h) => t + h.current, 0) : s.current;
+  const pnl = current - invested;
+  const share = filtered ? shown.reduce((t, h) => t + h.share, 0) : 1;
+  const xirr = filtered
+    ? mkXirr([...s.all.filter((h) => instruments!.has(h.category)).flatMap((h) => h.flows), { d: mkToday(), v: current }])
+    : s.xirr;
+  const p = invested ? pnl / invested : 0;
+  return `<div class="mk-tablewrap"><table class="mk-table">
       <thead><tr>${head}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td>Total</td><td></td><td></td><td></td><td class="num">${esc(money(s.invested))}</td><td></td><td class="num">${esc(money(s.current))}</td><td class="num ${mkCls(s.pnl)}">${esc(mkSigned(s.pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">100%</td><td></td><td class="num">${esc(mkPct(s.xirr))}</td></tr></tfoot>
+      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(money(invested))}</td><td></td><td class="num">${esc(money(current))}</td><td class="num ${mkCls(pnl)}">${esc(mkSigned(pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(share))}</td><td></td><td class="num">${esc(mkPct(xirr))}</td></tr></tfoot>
     </table></div>`;
 }
 
@@ -1038,7 +1092,7 @@ export function setupMarket(): void {
         mkState.sortKey = d.sort;
         mkState.sortDir = ["name", "category"].includes(d.sort) ? 1 : -1;
       }
-      $("mkTableCard").innerHTML = mkTableHtml(marketSummary());
+      drawMkTable();
     } else if (d.hyear) {
       const all = data().orders.filter((o) => o.holding === mkState.holding).map((o) => o.date.slice(0, 4));
       const on = mkState.years ? new Set(mkState.years) : new Set(all);
