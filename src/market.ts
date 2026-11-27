@@ -368,10 +368,10 @@ function renderMarket(): void {
 
   body.innerHTML = `
     ${mkCards(s)}
+    <section class="card card-gap" id="mkTableCard">${mkTableHtml()}</section>
     ${mkCalendar()}
     <section class="card card-gap" id="mkTreeCard">${mkTreemapHtml(s)}</section>
     <section class="card card-gap" id="mkBarsCard">${mkBarsHtml(s)}</section>
-    <section class="card card-gap" id="mkTableCard">${mkTableHtml()}</section>
     <section class="card card-gap" id="mkHistory">${mkHistoryHtml(s)}</section>
     <section class="card card-gap" id="mkDividends">${mkDividendsHtml()}</section>`;
   setupMkCalendar();
