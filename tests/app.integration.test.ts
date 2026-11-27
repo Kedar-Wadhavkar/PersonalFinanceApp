@@ -343,6 +343,11 @@ describe("the sample workbook shipped with the app", () => {
     click(document.querySelector(".side-item[data-module='expense']"));
     expect($("err").textContent).toBe("");
     expect(document.querySelectorAll("#tbody tr.vrow").length).toBeGreaterThan(0);
+    click(document.querySelector(".side-item[data-page='networth']"));
+    expect(visible("networthPage")).toBe(true);
+    expect(text("nwSub")).toContain('"Accounts" sheet');
+    expect(text("nwSub")).not.toContain("skipped");
+    expect(document.querySelectorAll("#nwBody .nw-table tbody tr").length).toBeGreaterThan(5);
   });
 });
 
@@ -361,5 +366,90 @@ describe("a workbook with expenses only", () => {
     expect(document.querySelector(".app")!.classList.contains("no-data")).toBe(false);
     click(document.querySelector(".side-item[data-module='expense']"));
     expect(visible("moduleEmpty")).toBe(false);
+  });
+});
+
+describe("the Net worth page", () => {
+  async function accountsWorkbook() {
+    return fileOf(
+      await buildXlsx([
+        {
+          name: "Accounts",
+          rows: [
+            ["2026"],
+            ["Date", "Account", "Type", "Balance"],
+            ["31-01-2026", "HDFC", "Bank", 100000],
+            ["31-01-2026", "Home loan", "Loan", 300000],
+            ["31-01-2026", "Flat", "Property", 500000],
+            ["28-02-2026", "HDFC", "Bank", 120000],
+            ["28-02-2026", "Home loan", "Loan", 290000],
+          ],
+        },
+      ]),
+      "accounts.xlsx",
+    );
+  }
+
+  it("opens when a workbook has only an Accounts sheet", async () => {
+    await choose(await accountsWorkbook());
+    expect(visible("networthPage")).toBe(true);
+    expect(visible("modulePage")).toBe(false);
+    expect(document.querySelector(".side-item[data-page='networth']")!.getAttribute("aria-current")).toBe("page");
+    // 1,20,000 + 5,00,000 − 2,90,000, plus the market file loaded earlier at today's prices (1,620)
+    expect(tight("nwBody")).toContain("₹3,31,620");
+    expect(text("nwBody")).toContain("Accounts · Nov 2026");
+    expect(document.querySelector("[data-count='networth']")!.textContent).toBe("3");
+    expect(document.querySelectorAll("#nwBody .nw-table tbody tr")).toHaveLength(4);
+  });
+
+  it("picks a month from the chart", () => {
+    click(document.querySelector(`#nwBody .nw-month[data-month='${2026 * 12}']`));
+    expect(text("nwBody")).toContain("Accounts · Jan 2026");
+    expect(text("nwBody")).toContain("What changed since Dec 2025");
+    // 1,00,000 + 5,00,000 − 3,00,000, plus the market at cost on 31 Jan (2,000)
+    expect(tight("nwBody")).toContain("Networth₹3,02,000");
+    expect(text("nwBody")).toContain("at cost, 31-01-2026");
+  });
+
+  it("stays on the page and goes back to the newest month when a file is loaded again", async () => {
+    await choose(await marketWorkbook());
+    expect(visible("networthPage")).toBe(true);
+    expect(text("nwSub")).toContain("market file");
+    expect(text("nwBody")).toContain("Accounts · Nov 2026");
+    expect(text("nwBody")).toContain("today's prices");
+  });
+});
+
+describe("the what-if simulator on the Net worth page", () => {
+  it("projects from the sample workbook and reacts to the sliders", async () => {
+    const buf = readFileSync(resolve(__dirname, "../public/sample-workbook.xlsx"));
+    await choose(new File([buf], "sample-workbook.xlsx"));
+    click(document.querySelector(".side-item[data-page='networth']"));
+    expect(text("nwSim")).toContain("What if: forecast");
+    const out = () => text("nwSimOut");
+    const before = out();
+    expect(before).toContain("Net worth in 5 years");
+    expect(before).toContain("+₹0 vs your current path");
+
+    const cut = $<HTMLInputElement>("simCut");
+    cut.value = "20";
+    cut.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(text("simCutOut")).toBe("20%");
+    expect(out()).not.toContain("+₹0 vs your current path");
+    expect($("simCut")).toBe(cut); // the slider itself is not redrawn
+
+    click(document.querySelector("#simPeriod button[data-years='10']"));
+    expect(out()).toContain("Net worth in 10 years");
+    expect(document.querySelectorAll("#nwSimOut .sim-table tbody tr")).toHaveLength(4);
+
+    click(document.querySelector("#simView button[data-view='saved']"));
+    expect(out()).toContain("Money saved, your changes");
+  });
+
+  it("lets the discretionary categories be chosen", () => {
+    const chip = document.querySelector<HTMLElement>("#simChips .sim-chip[aria-pressed='false']")!;
+    const name = chip.dataset.cat!;
+    click(chip);
+    expect(document.querySelector(`#simChips .sim-chip[data-cat='${name}']`)!.getAttribute("aria-pressed")).toBe("true");
   });
 });

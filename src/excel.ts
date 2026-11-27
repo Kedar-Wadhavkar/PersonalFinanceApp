@@ -240,8 +240,8 @@ export async function workbookMatrices(buf: ArrayBuffer): Promise<SheetMatrix[]>
 const HEADER_SEARCH_ROWS = 5;
 
 // Dates and amounts in cells: see cellValues.ts (re-exported for callers of this file)
-export { excelDate, parseAmount, parseTextDate } from "./cellValues";
-import { excelDate, parseAmount } from "./cellValues";
+export { excelDate, normalizeCurrency, parseAmount, parseTextDate } from "./cellValues";
+import { excelDate, normalizeCurrency, parseAmount } from "./cellValues";
 
 /* ------------ Column headings and currencies ------------ */
 
@@ -267,12 +267,6 @@ const COLUMN_ALIASES: Record<string, string> = {
 export function columnKey(heading: unknown): string {
   const letters = String(heading ?? "").toLowerCase().replace(/[^a-z]/g, "");
   return COLUMN_ALIASES[letters] || letters;
-}
-
-// "¥" -> "JPY", "inr" -> "INR", "" -> ""
-export function normalizeCurrency(raw: unknown): string {
-  const text = String(raw ?? "").trim();
-  return text ? CONFIG.currencySymbols[text] || text.toUpperCase() : "";
 }
 
 // Does the cell hold a real value (not empty, not only spaces)?

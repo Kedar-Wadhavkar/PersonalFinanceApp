@@ -1,4 +1,5 @@
 import { hasMarketData } from "./market";
+import { hasAccountsData } from "./networth";
 import { MODULES, MODULE_KEYS, activeModule, moduleData } from "./modules";
 import { allRows } from "./state";
 import { $, esc } from "./utils";
@@ -34,6 +35,7 @@ function welcomeHtml(): string {
       </div>
       <ol class="empty-steps">
         <li><b>Expense</b> and <b>Income</b> sheets, each with the headings Date, Amount, Category and Mode in one of the first 5 rows.</li>
+        <li>Optional: an <b>Accounts</b> sheet (Date, Account, Type, Balance) with your bank, deposit, property and loan balances, for the Net worth page.</li>
         <li>Optional: your <b>market file</b> with the orders (Date, Order, Holding, Units, UnitAvg). Choose it together with the workbook.</li>
         <li>After editing the file in Excel, load it again to refresh the charts.</li>
       </ol>
@@ -62,7 +64,7 @@ function noRowsHtml(): string {
 }
 
 export function anyDataLoaded(): boolean {
-  return MODULE_KEYS.some((k) => (moduleData[k]?.records.length ?? 0) > 0) || hasMarketData();
+  return MODULE_KEYS.some((k) => (moduleData[k]?.records.length ?? 0) > 0) || hasMarketData() || hasAccountsData();
 }
 
 /** Show or hide the empty state of the module page. Called by render(). */

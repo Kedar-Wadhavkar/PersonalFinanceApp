@@ -3518,3 +3518,464 @@ button.mk-day:focus-visible {
 .mk-table .mk-link:hover {
   text-decoration: underline;
 }
+
+/* -------- Recurring bills & anomalies (recurringPanel.ts) -------- */
+
+.rb-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rb-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  min-width: 0;
+}
+
+.rb-stat b {
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.rb-stat:first-child b {
+  color: #b45309;
+}
+
+/* Bills table above, anomalies below: the table needs the full width */
+.rb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* Anomalies in two columns where there is room */
+.rb-anomalies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+  margin-top: 6px;
+}
+
+.rb-scroll {
+  margin-top: 10px;
+}
+
+.rb-scroll {
+  max-height: 360px;
+}
+
+.rb-scroll .rb-table {
+  min-width: 600px;
+}
+
+.rb-table td {
+  vertical-align: top;
+}
+
+.rb-table .rb-num {
+  text-align: right;
+}
+
+.rb-find {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rb-find:hover {
+  text-decoration: underline;
+}
+
+.rb-stale td {
+  color: #94a3b8;
+}
+
+.rb-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.rb-anomaly {
+  margin-top: 4px;
+}
+
+.rb-dot {
+  flex: 0 0 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.rb-high .rb-dot {
+  background: #dc2626;
+}
+
+.rb-more {
+  padding: 6px;
+}
+
+@media (max-width: 1000px) {
+  .rb-anomalies {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .rb-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+#secRecurring[hidden],
+.side-item[href="#secRecurring"][hidden] {
+  display: none;
+}
+
+/* =========================================================================
+ 16. Net worth page (networth.ts)
+========================================================================= */
+
+/* Monthly bars: assets stacked above the line, debts below it */
+.nw-up {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 22px;
+  height: 150px;
+}
+
+.nw-down {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 22px;
+  height: 44px;
+  border-top: 1px solid #94a3b8;
+}
+
+.nw-up .nw-seg:last-child {
+  border-radius: 0;
+}
+
+.nw-up .nw-seg:first-child {
+  border-radius: 3px 3px 0 0;
+}
+
+.nw-down .nw-seg {
+  border-radius: 0 0 3px 3px;
+}
+
+.nw-seg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.nw-key {
+  flex-wrap: wrap;
+}
+
+.nw-note {
+  margin-top: 8px;
+}
+
+/* What you own / owe */
+.nw-shares {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.nw-sub {
+  margin-top: 18px;
+}
+
+.nw-share-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 14px;
+}
+
+.nw-share-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nw-share-row b {
+  min-width: 96px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nw-track {
+  display: block;
+  height: 8px;
+  margin-top: 4px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.nw-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+/* What changed */
+.nw-bridge,
+.nw-bridge-split {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
+.nw-bridge-split {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.nw-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(96px, auto);
+  gap: 10px;
+  align-items: baseline;
+  font-size: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.nw-line:last-child {
+  border-bottom: 0;
+}
+
+.nw-line b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nw-total {
+  border-top: 2px solid #dbe2ea;
+  font-weight: 700;
+}
+
+.nw-debt {
+  color: #be123c;
+}
+
+/* Phones: the account name stays in view while the table scrolls sideways */
+@media (max-width: 800px) {
+  .nw-table th:first-child,
+  .nw-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #ffffff;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nw-table th:first-child {
+    z-index: 2;
+    background: #f8fafc;
+  }
+}
+
+.nw-table {
+  table-layout: auto;
+  min-width: 600px;
+}
+
+/* What-if simulator (forecast.ts) */
+.sim-hist,
+.sim-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sim-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.sim-stat b {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.sim-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.sim-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sim-label output {
+  font-variant-numeric: tabular-nums;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.sim-field input[type="range"] {
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  accent-color: #0f766e;
+  cursor: pointer;
+}
+
+.sim-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sim-chip {
+  font: inherit;
+  font-size: 13px;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.sim-chip[aria-pressed="true"] {
+  background: #f0fdfa;
+  border-color: #0f766e;
+  color: #115e59;
+  font-weight: 500;
+}
+
+.sim-out {
+  min-width: 0;
+}
+
+.sim-out .sim-cards {
+  margin-top: 0;
+}
+
+.sim-charthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 8px;
+}
+
+.sim-sw-base {
+  background: repeating-linear-gradient(90deg, #64748b 0 4px, transparent 4px 7px);
+}
+
+.sim-chart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+}
+
+.sim-chart svg {
+  display: block;
+  width: 100%;
+  height: 220px;
+}
+
+.sim-yaxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: right;
+  padding: 2px 0;
+  min-width: 44px;
+}
+
+.sim-xaxis {
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 0 0 50px;
+}
+
+.sim-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.sim-table {
+  table-layout: auto;
+  min-width: 460px;
+}
+
+.sim-note {
+  margin-top: 10px;
+}
+
+@media (max-width: 1000px) {
+  .sim-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .sim-hist,
+  .sim-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sim-xaxis span:nth-child(even) {
+    visibility: hidden;
+  }
+}

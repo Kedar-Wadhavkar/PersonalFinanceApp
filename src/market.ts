@@ -41,6 +41,9 @@ export function setMarketData(value: MarketData): void {
 export function hasMarketData(): boolean {
   return marketData !== null;
 }
+export function getMarketData(): MarketData | null {
+  return marketData;
+}
 
 // Every drawing function below runs only once marketData is set
 const data = (): MarketData => marketData!;

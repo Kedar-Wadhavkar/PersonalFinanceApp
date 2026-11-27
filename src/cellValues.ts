@@ -1,9 +1,11 @@
 /* =========================================================================
 cellValues.ts
-Reading one cell as a date or an amount. Shared by the workbook reader
+Reading one cell as a date, an amount or a currency. Shared by the workbook reader
 (excel.ts, loaded only when a file is picked) and the market page, so the
 market page does not pull the whole reader into the first download.
 ========================================================================= */
+
+import { CONFIG } from "./config";
 
 // Month names in text dates: "Mar", "March", "Sept" (English, any case)
 const MONTH_WORDS: Record<string, number> = {
@@ -108,4 +110,10 @@ export function parseAmount(raw: unknown): number | null {
   if (!/^(?:\d+\.?\d*|\.\d+)$/.test(s)) return NaN;
   const n = Number(s);
   return negative ? -n : n;
+}
+
+// "¥" -> "JPY", "inr" -> "INR", "" -> ""
+export function normalizeCurrency(raw: unknown): string {
+  const text = String(raw ?? "").trim();
+  return text ? CONFIG.currencySymbols[text] || text.toUpperCase() : "";
 }
