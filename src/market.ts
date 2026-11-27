@@ -25,14 +25,14 @@ matter, so they may sit in the finance workbook or in a separate file):
 
   Orders (required) .... Date, Order (Buy/Sell), Holding, Units, UnitAvg;
                          optional LotValue, Charges, IndexValue, EqCumUnits
-  Holdings (optional) .. Holding plus LTP (latest price); optional Category,
-                         Sector, SubSector. Gives the current prices.
+  Holdings (optional) .. Holding plus LTP (latest price); optional Instrument
+                         (older files: Category), Sector, SubSector. Gives the current prices.
   Dividends (optional) . Date, Holding, Amount (or Dividend)
 
 Quantity, average cost and invested amount are worked out from the orders
 (average-cost method, as in the sheet's CurrentInv / SoldInv columns), so a
 holdings table that is a few days old still shows the latest buys. Only the
-price (LTP) and the category come from the holdings table.
+price (LTP) and the instrument type come from the holdings table.
 ========================================================================= */
 
 let marketData: MarketData | null = null; // parseMarket() result, null until a file has orders
@@ -164,7 +164,7 @@ export function parseMarket(sheets: SheetMatrix[]): MarketData | null {
         if (!holding || typeof row[c.holding!] === "number") continue; // total row
         const txt = (k: string) => (c[k] === undefined ? "" : String(row[c[k]] ?? "").trim());
         info.set(holding, {
-          category: txt("category") || "Other",
+          category: txt("instrument") || txt("category") || "Other", // "Category" = older files
           sector: txt("sector"),
           subSector: txt("subsector"),
           ltp: mkNum(row[c.ltp!]),
@@ -415,13 +415,13 @@ function mkCards(s: MarketSummary): string {
 
 // Same layout and filter bar as the Expense calendar (heatmap.ts), so the
 // CSS classes of that calendar (.heat-*) are reused. Only the colours differ.
-// Filters: Year (one at a time), Months, Holding, Category, Order (Buy / Sell).
+// Filters: Year (one at a time), Months, Holding, Instrument, Order (Buy / Sell).
 const MKC_WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"]; // Sunday first
 const MKC_FILTERS = [
   { id: "Year", label: "Year" },
   { id: "Month", label: "Months" },
   { id: "Hold", label: "Holding" },
-  { id: "Cat", label: "Category" },
+  { id: "Cat", label: "Instrument" },
   { id: "Ord", label: "Order" },
 ] as const;
 type MkcName = "years" | "months" | "holds" | "cats" | "orders";
@@ -582,11 +582,11 @@ function drawMkCalendar(): void {
   box.innerHTML = html;
 }
 
-/* ---- Category chips (treemap + bars) ---- */
+/* ---- Instrument chips (treemap + bars) ---- */
 
 function mkCategoryChips(s: MarketSummary): string {
   const cats = ["All", ...new Set(s.held.map((h) => h.category))];
-  return `<div class="mk-chips" role="group" aria-label="Category">${cats
+  return `<div class="mk-chips" role="group" aria-label="Instrument">${cats
     .map((c) => `<button type="button" class="mk-chip${c === mkState.category ? " on" : ""}" data-cat="${esc(c)}" aria-pressed="${c === mkState.category}">${c === "All" ? "All" : `<span class="ov-sw" style="background:${mkCatColor(c)}"></span>${esc(c)}`}</button>`)
     .join("")}</div>`;
 }
@@ -724,7 +724,7 @@ type HoldingColumn = [keyof Holding, string, ColumnType];
 
 const MK_COLUMNS: HoldingColumn[] = [
   ["name", "Holding", "text"],
-  ["category", "Category", "text"],
+  ["category", "Instrument", "text"],
   ["qty", "Qty", "qty"],
   ["avg", "Avg cost", "price"],
   ["invested", "Invested", "money"],

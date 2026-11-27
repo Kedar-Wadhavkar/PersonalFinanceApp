@@ -107,7 +107,7 @@ Three places use category or type *names* to decide something:
   categories on and off in the app.
 - **Account types** (asset or debt, cash or other): `DEBT_TYPE` and
   `CASH_TYPE` in `src/networth.ts`.
-- **Market category colours** (ETF, MutualFund, Stock): `MK_CATEGORY_COLORS`
+- **Market instrument colours** (ETF, MutualFund, Stock): `MK_CATEGORY_COLORS`
   in `src/market.ts`.
 
 ### Add a currency symbol
