@@ -13,7 +13,8 @@ import type {
   SheetGrid,
   SheetMatrix,
 } from "./types";
-import { $, emptyCardHtml, esc, money, moneyShort, moneySign, setMoneyCurrency, signedMoney, todayIso } from "./utils";
+import { createMultiSelect, type MultiSelect } from "./multiselect";
+import { $, NO_DATA_HTML, emptyCardHtml, wireMultiToggles, esc, money, moneyShort, moneySign, setMoneyCurrency, signedMoney, todayIso } from "./utils";
 
 /* =========================================================================
 market.ts
@@ -373,6 +374,7 @@ function renderMarket(): void {
     <section class="card card-gap" id="mkTableCard">${mkTableHtml(s)}</section>
     <section class="card card-gap" id="mkHistory">${mkHistoryHtml(s)}</section>
     <section class="card card-gap" id="mkDividends">${mkDividendsHtml()}</section>`;
+  setupMkCalendar();
   mkLayoutTreemap(s);
 }
 
@@ -411,57 +413,171 @@ function mkCards(s: MarketSummary): string {
 
 /* ---- Investment calendar ---- */
 
+// Same layout and filter bar as the Expense calendar (heatmap.ts), so the
+// CSS classes of that calendar (.heat-*) are reused. Only the colours differ.
+// Filters: Year (one at a time), Months, Holding, Category, Order (Buy / Sell).
+const MKC_WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"]; // Sunday first
+const MKC_FILTERS = [
+  { id: "Year", label: "Year" },
+  { id: "Month", label: "Months" },
+  { id: "Hold", label: "Holding" },
+  { id: "Cat", label: "Category" },
+  { id: "Ord", label: "Order" },
+] as const;
+type MkcName = "years" | "months" | "holds" | "cats" | "orders";
+const MKC_KEYS: MkcName[] = ["years", "months", "holds", "cats", "orders"];
+
+let mkcMenus = {} as Record<MkcName, MultiSelect>;
+// Last choice of each dropdown, kept when the page is redrawn (e.g. new currency)
+let mkcChoice: Partial<Record<MkcName, string[]>> = {};
+let mkcAllValues = {} as Record<MkcName, string[]>;
+
+const mkcCategoryOf = (holding: string): string => data().info.get(holding)?.category || "Other";
+
 function mkCalendar(): string {
+  const fields = MKC_FILTERS.map(({ id, label }) => {
+    const p = "mkc" + id;
+    return (
+      `<div class="field"><span class="small field-label" id="${p}Label">${label}</span>` +
+      `<div id="${p}Multi" class="multi">` +
+      `<button type="button" id="${p}Toggle" aria-labelledby="${p}Label ${p}Toggle">All selected ▾</button>` +
+      `<div id="${p}Menu" class="multi-menu"></div></div></div>`
+    );
+  }).join("");
+  return `<section class="card card-gap" id="mkCalendar">
+    <div>
+      <div class="graphtitle"><b>Investment calendar</b></div>
+      <div class="small">Click a coloured day to see its orders</div>
+    </div>
+    <div class="filters chart-filters" id="mkcBar">${fields}<button type="button" id="mkcReset">Reset</button></div>
+    <div id="mkcBody" class="mkc-body"></div>
+  </section>`;
+}
+
+// Build the five dropdowns and draw the months (called after the page HTML is set)
+function setupMkCalendar(): void {
+  const orders = data().orders;
+  const years = [...new Set(orders.map((o) => o.date.slice(0, 4)))].sort().reverse(); // newest first
+  const holds = [...new Set(orders.map((o) => o.holding))].sort((a, b) => a.localeCompare(b));
+  const cats = [...new Set(holds.map(mkcCategoryOf))].sort((a, b) => a.localeCompare(b));
+  mkcAllValues = { years, months: [...CONFIG.months], holds, cats, orders: ["Buy", "Sell"] };
+
+  const wanted = mkcChoice.years?.[0] ?? (mkState.calYear !== null ? String(mkState.calYear) : null);
+  MKC_KEYS.forEach((name, i) => {
+    const p = "mkc" + MKC_FILTERS[i]!.id;
+    mkcMenus[name] = createMultiSelect({
+      menuId: p + "Menu",
+      toggleId: p + "Toggle",
+      cls: p + "Check",
+      values: mkcAllValues[name],
+      onChange: () => {
+        mkcChoice[name] = mkcMenus[name].values();
+        if (name === "years") mkState.calYear = Number(mkcMenus.years.values()[0]) || null;
+        drawMkCalendar();
+      },
+      ...(name === "years" ? { limit: 1, headerLabel: "Latest", latestOnly: true } : {}),
+    });
+    // Put back what was ticked before, where it still exists
+    const kept = name === "years" ? (wanted && years.includes(wanted) ? [wanted] : null) : mkcChoice[name]?.filter((v) => mkcAllValues[name].includes(v));
+    if (kept) mkcMenus[name].setValues(kept);
+  });
+  mkState.calYear = Number(mkcMenus.years.values()[0]) || null;
+
+  wireMultiToggles(MKC_FILTERS.map((f) => `mkc${f.id}Multi`));
+  $("mkcReset").onclick = () => {
+    mkcChoice = {};
+    mkState.calYear = null;
+    setupMkCalendar();
+  };
+  drawMkCalendar();
+}
+
+function drawMkCalendar(): void {
+  const box = $("mkcBody");
+  const year = mkcMenus.years.values()[0];
+  const months = mkcMenus.months.set();
+  const holds = mkcMenus.holds.set();
+  const cats = mkcMenus.cats.set();
+  const types = mkcMenus.orders.set();
+  if (!year || !months.size || !holds.size || !cats.size || !types.size) {
+    box.innerHTML = NO_DATA_HTML;
+    return;
+  }
+
+  // Matching orders of the chosen year, grouped by day
   const byDay = new Map<string, { buy: number; sell: number; list: MarketOrder[] }>();
   for (const o of data().orders) {
-    const e = byDay.get(o.date) || { buy: 0, sell: 0, list: [] };
-    e[o.type === "Buy" ? "buy" : "sell"] += o.value;
-    e.list.push(o);
-    byDay.set(o.date, e);
+    if (
+      o.date.startsWith(year + "-") &&
+      months.has(CONFIG.months[Number(o.date.slice(5, 7)) - 1]!) &&
+      holds.has(o.holding) &&
+      cats.has(mkcCategoryOf(o.holding)) &&
+      types.has(o.type)
+    ) {
+      const e = byDay.get(o.date) || { buy: 0, sell: 0, list: [] };
+      e[o.type === "Buy" ? "buy" : "sell"] += o.value;
+      e.list.push(o);
+      byDay.set(o.date, e);
+    }
   }
-  const years = [...new Set(data().orders.map((o) => Number(o.date.slice(0, 4))))];
-  if (mkState.calYear === null || !years.includes(mkState.calYear)) mkState.calYear = years[years.length - 1]!;
-  const y = mkState.calYear;
+  // A day is coloured by what was bought; with only Sell ticked, by what was sold
+  const sellOnly = !types.has("Buy");
+  const bothTypes = types.has("Buy") && types.has("Sell");
+  const amount = (e: { buy: number; sell: number }) => (sellOnly ? e.sell : e.buy);
 
-  // Colour steps from the buy amounts of every day
-  const amounts = [...byDay.values()].map((e) => e.buy).filter((v) => v > 0).sort((a, b) => a - b);
+  // Colour steps (about half the days in the lightest colour, a few in the darkest)
+  const amounts = [...byDay.values()].map(amount).filter((v) => v > 0).sort((a, b) => a - b);
   const q = (p: number) => amounts[Math.min(amounts.length - 1, Math.floor(p * amounts.length))] || 0;
   const steps = [q(0.5), q(0.8), q(0.95)];
-  const level = (v: number) => (v <= steps[0] ? 1 : v <= steps[1] ? 2 : v <= steps[2] ? 3 : 4);
+  const level = (v: number) => (v <= steps[0]! ? 1 : v <= steps[1]! ? 2 : v <= steps[2]! ? 3 : 4);
 
-  const months = CONFIG.months.map((mName, m) => {
-    const first = new Date(Date.UTC(y, m, 1));
-    const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-    let total = 0;
-    let cells = "";
-    for (let i = 0; i < first.getUTCDay(); i++) cells += `<span class="mk-day mk-blank"></span>`;
-    for (let day = 1; day <= days; day++) {
-      const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const y = Number(year);
+  const todayMs = new Date().setHours(0, 0, 0, 0);
+  const plural = (n: number) => `${n} transaction${n === 1 ? "" : "s"}`;
+
+  const monthHtml = (m: number): string => {
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    let html = `<div class="heat-month"><div class="heat-month-name">${CONFIG.months[m]!.slice(0, 3)}</div><div class="heat-grid">`;
+    html += MKC_WEEKDAYS.map((d) => `<span class="heat-wd">${d}</span>`).join("");
+    for (let i = 0; i < new Date(y, m, 1).getDay(); i++) html += `<span></span>`;
+    let net = 0;
+    let sold = 0;
+    let count = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${year}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const e = byDay.get(iso);
       if (!e) {
-        cells += `<span class="mk-day"></span>`;
+        html += `<span class="heat-day heat-none"></span>`;
         continue;
       }
-      total += e.buy - e.sell;
+      net += e.buy - e.sell;
+      sold += e.sell;
+      count += e.list.length;
       const tip = `${mkDate(iso)}: ${e.list.map((o) => `${o.type} ${mkQty(o.units)} ${o.holding} ${money(o.value)}`).join("; ")}`;
-      cells += `<button type="button" class="mk-day ${e.buy ? `mk-l${level(e.buy)}` : ""}${e.sell ? " mk-sell" : ""}" data-day="${iso}" title="${esc(tip)}" aria-label="${esc(tip)}"></button>`;
+      const v = amount(e);
+      html += `<button type="button" class="heat-day ${v > 0 ? `mk-l${level(v)}` : "heat-none"}${bothTypes && e.sell ? " mk-sell" : ""}" data-day="${iso}" title="${esc(tip)}" aria-label="${esc(tip)}"></button>`;
     }
-    return `<div class="mk-month"><div class="mk-mhead"><b>${mName}</b><span>${total ? esc(money(total)) : ""}</span></div><div class="mk-grid">${cells}</div></div>`;
-  });
+    html += `</div>`;
+    // Figures under the month (not for a month that has not started yet)
+    if (new Date(y, m, 1).getTime() <= todayMs) {
+      html += `<div class="heat-month-foot"><div class="heat-month-total">${money(sellOnly ? sold : net)}</div><div>${plural(count)}</div></div>`;
+    }
+    return html + `</div>`;
+  };
 
-  return `<section class="card card-gap" id="mkCalendar">
-    <div class="ov-head">
-      <div><div class="graphtitle"><b>Investment calendar</b></div><div class="small">Money put in each day; the month's net total on top. Click a day for its orders.</div></div>
-      <div class="ov-period mk-years" role="group" aria-label="Year">${years
-        .map((yr) => `<button type="button" data-cal-year="${yr}" class="${yr === y ? "on" : ""}" aria-pressed="${yr === y}">${yr}</button>`)
-        .join("")}</div>
-    </div>
-    <div class="mk-cal">${months.join("")}</div>
-    <div class="mk-cal-foot">
-      <div class="mk-legend small">Less <span class="mk-day mk-l1"></span><span class="mk-day mk-l2"></span><span class="mk-day mk-l3"></span><span class="mk-day mk-l4"></span> More <span class="mk-day mk-sell"></span> Sell</div>
-      <div class="small" id="mkDayInfo"></div>
-    </div>
-  </section>`;
+  const chosen = CONFIG.months.map((_, m) => m).filter((m) => months.has(CONFIG.months[m]!));
+  let html = `<div class="heat-year">${esc(year)}</div><div class="heat-months">${chosen.map(monthHtml).join("")}</div>`;
+  if (amounts.length) {
+    html += `<div class="heat-legend"><span class="small">${money(amounts[0]!)}</span>${[1, 2, 3, 4]
+      .map((l) => `<i class="heat-swatch mk-l${l}"></i>`)
+      .join("")}<span class="small">${money(amounts[amounts.length - 1]!)}</span>${
+      bothTypes ? `<i class="heat-swatch mk-sellkey"></i><span class="small">Day with a sell</span>` : ""
+    }</div>`;
+  } else {
+    html += `<div class="heat-legend"><span class="small">No orders in this selection</span></div>`;
+  }
+  html += `<div class="small mkc-info" id="mkDayInfo"></div>`;
+  box.innerHTML = html;
 }
 
 /* ---- Category chips (treemap + bars) ---- */
@@ -890,10 +1006,7 @@ export function setupMarket(): void {
     const t = (e.target as Element).closest<HTMLElement>("button, tr[data-holding]");
     if (!t) return;
     const d = t.dataset;
-    if (d.calYear) {
-      mkState.calYear = Number(d.calYear);
-      $("mkCalendar").outerHTML = mkCalendar();
-    } else if (d.day) {
+    if (d.day) {
       const day = d.day;
       const list = data().orders.filter((o) => o.date === day);
       $("mkDayInfo").innerHTML = `<b>${esc(mkDate(d.day))}</b>: ${list

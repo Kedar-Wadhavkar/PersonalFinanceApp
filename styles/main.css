@@ -2665,57 +2665,9 @@ main.wrap[hidden] {
   flex-wrap: wrap;
 }
 
-/* Investment calendar: 12 small months */
-.mk-cal {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 18px 22px;
-  margin-top: 14px;
-}
-
-.mk-mhead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 6px;
-  font-size: 14px;
-}
-
-.mk-mhead span {
-  color: #5b6b80;
-  font-size: 13px;
-}
-
-.mk-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-}
-
-.mk-day {
-  display: inline-block;
-  aspect-ratio: 1;
-  min-width: 12px;
-  border: 0;
-  border-radius: 3px;
-  padding: 0;
-  background: #f1f5f9;
-}
-
-.mk-grid .mk-blank {
-  background: transparent;
-}
-
-button.mk-day {
-  cursor: pointer;
-}
-
-button.mk-day:hover,
-button.mk-day:focus-visible {
-  outline: 2px solid #0f172a;
-  outline-offset: 1px;
-}
-
+/* Investment calendar: drawn like the Expense calendar (.heat-* classes,
+   section 9b). Only the colours are its own: blue to violet, and a red edge
+   on a day that also had a sell. */
 .mk-l1 {
   background: #bfdbfe;
 }
@@ -2732,27 +2684,26 @@ button.mk-day:focus-visible {
   background: #7c3aed;
 }
 
-.mk-day.mk-sell {
+.heat-day.mk-sell,
+.heat-swatch.mk-sellkey {
   box-shadow: inset 0 0 0 2px #dc2626;
 }
 
-.mk-cal-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-  align-items: center;
-  margin-top: 14px;
+.heat-swatch.mk-sellkey {
+  width: 12px;
+  height: 12px;
+  margin-left: 14px;
+  background: #f8fafc;
 }
 
-.mk-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.mkc-body {
+  margin-top: var(--chart-gap-top);
 }
 
-.mk-legend .mk-day {
-  width: 14px;
-  min-width: 14px;
+.mkc-info {
+  margin-top: 12px;
+  text-align: center;
+  min-height: 18px;
 }
 
 .mk-link {
@@ -3064,9 +3015,6 @@ button.mk-day:focus-visible {
 }
 
 @media (max-width: 1300px) {
-  .mk-cal {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 1000px) {
@@ -3074,15 +3022,9 @@ button.mk-day:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .mk-cal {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 560px) {
-  .mk-cal {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 800px) {
