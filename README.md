@@ -2,6 +2,8 @@
 
 Personal Finance Analytics: an offline, browser-based dashboard built from one Excel workbook.
 
+New here? Start with the [Owner guide](OWNER_GUIDE.md): folder structure, where each formula lives, how to add categories or charts, and how to run and publish the site.
+
 ## Modules
 
 - **Overview**: income vs expense, savings, cumulative savings, expense cover
