@@ -1,5 +1,6 @@
 import { CONFIG } from "./config";
 import { excelDate, parseAmount } from "./cellValues";
+import { moduleData } from "./modules";
 import { activePage, showPage } from "./overview";
 import { activeCurrency, setActiveCurrency } from "./state";
 import type {
@@ -20,7 +21,7 @@ import { $, NO_DATA_HTML, emptyCardHtml, wireMultiToggles, esc, money, moneyShor
 market.ts
 The Market page (#marketPage): shares, ETFs and mutual funds.
 
-Reads up to three tables, found by their HEADINGS (sheet names do not
+Reads up to two tables, found by their HEADINGS (sheet names do not
 matter, so they may sit in the finance workbook or in a separate file):
 
   Orders (required) .... Date, Order (Buy/Sell), Holding, Units, UnitAvg;
@@ -28,12 +29,14 @@ matter, so they may sit in the finance workbook or in a separate file):
   Holdings (optional) .. Holding plus LTP (latest price); optional Instrument
                          (older files: Category), Sector, SubSector, Units
                          (older files: Qty), Avg. Gives the current prices.
-  Dividends (optional) . Date, Holding, Amount (or Dividend)
 
 Quantity, average cost and invested amount are worked out from the orders
 (average-cost method, as in the sheet's CurrentInv / SoldInv columns), so a
 holdings table that is a few days old still shows the latest buys. Only the
 price (LTP) and the instrument type come from the holdings table.
+
+Dividends are not in the market file: they are the rows of the Income sheet
+whose Category is "Dividend" and whose Particulars read "Dividend: HOLDING".
 ========================================================================= */
 
 let marketData: MarketData | null = null; // parseMarket() result, null until a file has orders
@@ -115,7 +118,6 @@ const mkNum = (v: unknown): number | null => {
 export function parseMarket(sheets: SheetMatrix[]): MarketData | null {
   const orders: MarketOrder[] = [];
   const info = new Map<string, HoldingInfo>();
-  const dividends: Dividend[] = [];
   let skipped = 0;
   const sheetNames: string[] = [];
 
@@ -175,25 +177,10 @@ export function parseMarket(sheets: SheetMatrix[]): MarketData | null {
       }
       continue;
     }
-    // Dividends
-    h = mkFindHeader(grid, ["date", "holding", "amount|dividend"]);
-    if (h && h.cols.units === undefined) {
-      sheetNames.push(name);
-      const c = h.cols;
-      const amtCol = (c.amount ?? c.dividend)!;
-      for (let r = h.row + 1; r < grid.length; r++) {
-        const row = grid[r];
-        if (!row) continue;
-        const date = mkIso(row[c.date!]);
-        const holding = String(row[c.holding!] ?? "").trim();
-        const amount = mkNum(row[amtCol]);
-        if (date && holding && amount) dividends.push({ date, holding, amount });
-      }
-    }
   }
   if (!orders.length) return null;
   orders.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  return { orders, info, dividends, skipped, sheetNames };
+  return { orders, info, skipped, sheetNames };
 }
 
 /* ------------ Working out the holdings ------------ */
@@ -371,12 +358,17 @@ function renderMarket(): void {
     ${mkCards(s)}
     <section class="card card-gap" id="mkTableCard">${mkTableHtml()}</section>
     ${mkCalendar()}
-    <section class="card card-gap" id="mkTreeCard">${mkTreemapHtml(s)}</section>
-    <section class="card card-gap" id="mkBarsCard">${mkBarsHtml(s)}</section>
-    <section class="card card-gap" id="mkHistory">${mkHistoryHtml(s)}</section>
-    <section class="card card-gap" id="mkDividends">${mkDividendsHtml()}</section>`;
+    <div class="mk-pair">
+      <section class="card" id="mkTreeCard">${mkTreemapHtml(s)}</section>
+      <section class="card" id="mkBarsCard">${mkBarsHtml(s)}</section>
+    </div>
+    <div class="mk-pair">
+      <section class="card" id="mkHistory">${mkHistoryHtml(s)}</section>
+      <section class="card" id="mkDividends">${mkDividendsHtml()}</section>
+    </div>`;
   setupMkCalendar();
   setupMkTableFilter();
+  setupMkDividends();
   mkLayoutTreemap(s);
 }
 
@@ -974,13 +966,103 @@ function mkHistoryChart(list: MarketOrder[]): string {
 
 /* ---- Dividends ---- */
 
+// The dividends are Income rows: Category "Dividend", Particulars
+// "Dividend: HOLDING". Only rows in the chosen currency are counted, like the
+// Income page. Rows that do not follow the pattern are counted as skipped.
+const MK_DIVIDEND = /^\s*dividend\s*:\s*(.+?)\s*$/i;
+
+function mkDividendList(): { list: Dividend[]; skipped: number } {
+  const list: Dividend[] = [];
+  let skipped = 0;
+  for (const r of moduleData.income?.records ?? []) {
+    if (r.Currency !== activeCurrency || r.Category.trim().toLowerCase() !== "dividend") continue;
+    const m = MK_DIVIDEND.exec(r.Particular);
+    if (m && r.Amount) list.push({ date: r.Date, holding: m[1]!, amount: r.Amount });
+    else if (!m) skipped++;
+  }
+  return { list, skipped };
+}
+
+// Years of the pivot: newest first in the dropdown, at most CONFIG.maxCompareYears ticked
+let mkdMenu: MultiSelect | null = null;
+let mkdChoice: string[] | null = null;
+
 function mkDividendsHtml(): string {
-  const list = data().dividends;
+  const { list, skipped } = mkDividendList();
   if (!list.length) {
     return `<div class="graphtitle"><b>Dividends</b></div>
-      <div class="nodata small">No dividends found. Add a sheet (in either file) with the headings <b>Date</b>, <b>Holding</b> and <b>Amount</b>, one row per dividend received, and they will show here by month and by holding.</div>`;
+      <div class="nodata small">No dividends found. In the Income sheet, add one row per dividend with Category <b>Dividend</b> and Particulars written as <b>Dividend: HOLDING</b> (for example Dividend: TCS), and they will show here by month and by holding.${
+        skipped ? ` ${skipped} Income row${skipped === 1 ? "" : "s"} with Category Dividend did not follow that pattern.` : ""
+      }</div>`;
   }
-  const years = [...new Set(list.map((d) => d.date.slice(0, 4)))].sort();
+  const byMonth = mkState.divBy === "month";
+  return `<div class="ov-head">
+      <div><div class="graphtitle"><b>Dividends</b></div><div class="small">From the Income sheet, in ${esc(activeCurrency)}. Click − / + to fold a group.</div></div>
+      <div class="ov-period" role="group" aria-label="Group by">
+        <button type="button" data-div-by="month" class="${byMonth ? "on" : ""}" aria-pressed="${byMonth}">Month › Holding</button>
+        <button type="button" data-div-by="holding" class="${byMonth ? "" : "on"}" aria-pressed="${!byMonth}">Holding › Month</button>
+      </div>
+    </div>
+    <div class="filters chart-filters">
+      <div class="field"><span class="small field-label" id="mkdYearLabel">Years</span>
+        <div id="mkdYearMulti" class="multi">
+          <button type="button" id="mkdYearToggle" aria-labelledby="mkdYearLabel mkdYearToggle">All selected ▾</button>
+          <div id="mkdYearMenu" class="multi-menu"></div>
+        </div>
+      </div>
+      <button type="button" id="mkdReset">Reset</button>
+    </div>
+    <div id="mkdBody"></div>`;
+}
+
+function setupMkDividends(): void {
+  if (!document.getElementById("mkdBody")) return; // no dividends to show
+  const { list } = mkDividendList();
+  const values = [...new Set(list.map((d) => d.date.slice(0, 4)))].sort().reverse(); // newest first
+  mkdMenu = createMultiSelect({
+    menuId: "mkdYearMenu",
+    toggleId: "mkdYearToggle",
+    cls: "mkdYearCheck",
+    values,
+    limit: CONFIG.maxCompareYears,
+    headerLabel: `Latest ${CONFIG.maxCompareYears}`,
+    latestOnly: true,
+    onChange: () => {
+      mkdChoice = mkdMenu!.values();
+      drawMkDividends();
+    },
+  });
+  const kept = mkdChoice?.filter((y) => values.includes(y)) ?? [];
+  if (kept.length) mkdMenu.setValues(kept);
+  wireMultiToggles(["mkdYearMulti"]);
+  $("mkdReset").onclick = () => {
+    mkdChoice = null;
+    setupMkDividends();
+  };
+  drawMkDividends();
+}
+
+// A change of grouping or fold: redraw the table only (the years filter stays)
+function redrawMkDividends(): void {
+  $("mkDividends")
+    .querySelectorAll<HTMLElement>("[data-div-by]")
+    .forEach((b) => {
+      const on = b.dataset.divBy === mkState.divBy;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  drawMkDividends();
+}
+
+function drawMkDividends(): void {
+  const box = $("mkdBody");
+  const { list: all, skipped } = mkDividendList();
+  const years = (mkdMenu ? [...mkdMenu.values()] : []).sort(); // oldest to newest
+  if (!years.length) {
+    box.innerHTML = `<div class="nodata small">Pick at least one year.</div>`;
+    return;
+  }
+  const list = all.filter((d) => years.includes(d.date.slice(0, 4)));
   const byMonth = mkState.divBy === "month";
   const groupOf = (d: Dividend): string | number => (byMonth ? Number(d.date.slice(5, 7)) - 1 : d.holding);
   const childOf = (d: Dividend): string | number => (byMonth ? d.holding : Number(d.date.slice(5, 7)) - 1);
@@ -1011,23 +1093,18 @@ function mkDividendsHtml(): string {
     for (const y in sum) grand[y] = (grand[y] || 0) + sum[y]!;
     const key = `${mkState.divBy}:${g}`;
     const open = !mkState.divOpen.has(key); // all open until closed
-    rows += `<tr class="mk-dgroup"><td><button type="button" data-div-toggle="${esc(key)}" aria-expanded="${open}">${open ? "−" : "+"}</button> ${esc(label(g))}</td>${cells(sum)}</tr>`;
+    rows += `<tr class="mk-dgroup"><td><button type="button" data-div-toggle="${esc(key)}" aria-expanded="${open}" aria-label="${open ? "Fold" : "Unfold"} ${esc(label(g))}">${open ? "−" : "+"}</button> ${esc(label(g))}</td>${cells(sum)}</tr>`;
     if (open) {
       for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild" title="${esc(label(c))}">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
-  return `<div class="ov-head">
-      <div><div class="graphtitle"><b>Dividends</b></div><div class="small">Received per year, in ${esc(activeCurrency)}. Click − / + to fold a group.</div></div>
-      <div class="ov-period" role="group" aria-label="Group by">
-        <button type="button" data-div-by="month" class="${byMonth ? "on" : ""}">By month</button>
-        <button type="button" data-div-by="holding" class="${byMonth ? "" : "on"}">By holding</button>
-      </div>
-    </div>
-    <div class="mk-tablewrap"><table class="mk-table mk-dtable">
+  box.innerHTML = `<div class="mk-tablewrap"><table class="mk-table mk-dtable">
       <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>Total</td>${cells(grand)}</tr></tfoot>
-    </table></div>`;
+    </table></div>${
+      skipped ? `<div class="small mk-foot">${skipped} Income row${skipped === 1 ? "" : "s"} with Category Dividend ${skipped === 1 ? "was" : "were"} skipped: Particulars must read Dividend: HOLDING.</div>` : ""
+    }`;
 }
 
 /* ------------ Page switching and clicks ------------ */
@@ -1106,11 +1183,11 @@ export function setupMarket(): void {
       $("mkHistory").innerHTML = mkHistoryHtml(marketSummary());
     } else if (d.divBy) {
       mkState.divBy = d.divBy as "month" | "holding";
-      $("mkDividends").innerHTML = mkDividendsHtml();
+      redrawMkDividends();
     } else if (d.divToggle) {
       if (mkState.divOpen.has(d.divToggle)) mkState.divOpen.delete(d.divToggle);
       else mkState.divOpen.add(d.divToggle);
-      $("mkDividends").innerHTML = mkDividendsHtml();
+      redrawMkDividends();
     } else if (d.holding) {
       mkShowHolding(d.holding);
     }

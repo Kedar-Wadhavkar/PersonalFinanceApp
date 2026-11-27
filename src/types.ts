@@ -217,7 +217,6 @@ export interface Dividend {
 export interface MarketData {
   orders: MarketOrder[];
   info: Map<string, HoldingInfo>;
-  dividends: Dividend[];
   skipped: number;
   sheetNames: string[];
 }
