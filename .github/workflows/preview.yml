@@ -1,0 +1,42 @@
+name: PR preview (one-file download)
+
+# Checks every pull request (tests + build) and keeps an OPTIONAL download of
+# the app as ONE self-contained index.html (unzip, double-click). Nobody has to
+# open it: it is there only if you want to look before a merge. No comment is
+# posted. It never deploys anything: the live site only changes from deploy.yml.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request replaces a running preview build
+concurrency:
+  group: preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:preview
+
+      - name: Keep the optional one-file download
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-preview-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
+          path: |
+            dist-preview/index.html
+            dist-preview/sample-workbook.xlsx
+            dist-preview/icons/
+          retention-days: 30
+          if-no-files-found: error

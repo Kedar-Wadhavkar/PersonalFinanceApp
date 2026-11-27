@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "build:preview": "tsc --noEmit && vite build -c vite.singlefile.config.ts"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^5.1.2",

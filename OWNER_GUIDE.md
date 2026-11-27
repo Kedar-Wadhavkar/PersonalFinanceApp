@@ -21,7 +21,9 @@ PersonalFinanceApp/
 ├── public/               Copied as-is to the site: icons, sample-workbook.xlsx
 ├── fonts/                IBM Plex Sans, bundled so the app works offline
 ├── .github/workflows/    deploy.yml: tests, builds and publishes on every push to main
+│                         preview.yml: checks every pull request; optional one-file download
 ├── vite.config.ts        Build settings: site path, security policy, offline (PWA) setup
+├── vite.singlefile.config.ts  The one-file preview build (npm run build:preview)
 ├── vitest.config.ts      Test settings
 ├── tsconfig.json         TypeScript settings (strict)
 └── package.json          The npm commands and the tools they use
@@ -205,6 +207,25 @@ means it is live.
   lost.
 - **One-time setting** (already done): repository Settings → Pages → Source
   = **GitHub Actions**.
+
+### Pull request checks and the optional preview
+
+**You don't need to check pull requests yourself.** Claude decides whether a
+change is safe to merge: tests pass, both builds succeed, and it has tried
+the change itself. Then it merges, and the live site updates.
+
+Every pull request also builds a **preview** (`.github/workflows/preview.yml`):
+the whole app in one `index.html` that opens by double-clicking, with no
+Node, no server and nothing to install. It is optional and posts nothing.
+If you ever want to look before a merge: the pull request's **Checks** tab →
+"PR preview" → **Summary** → **Artifacts** → `finance-preview-pr-<number>`.
+Unzip it and double-click `index.html`. `sample-workbook.xlsx` is in the
+same zip.
+
+The preview has no offline/install support (a service worker cannot run
+from a file). It still blocks every network request. Downloads are kept
+for 30 days. To build one yourself: `npm run build:preview`, then open
+`dist-preview/index.html`.
 
 ---
 

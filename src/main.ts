@@ -241,8 +241,9 @@ setupHeatmapClicks();
 setupTxSort();
 selectModule(activeModule);
 
-// Offline support (built site only; the dev server and tests have none)
-if (import.meta.env.PROD && "serviceWorker" in navigator) void import("./pwa").then((m) => m.setupPwa());
+// Offline support (built site only; the dev server and tests have none,
+// and neither has the one-file PR preview, which opens from file://)
+if (import.meta.env.PROD && !import.meta.env.VITE_SINGLE_FILE && "serviceWorker" in navigator) void import("./pwa").then((m) => m.setupPwa());
 
 // On resize: the table's row height, the bar positions under the area
 // curves, the width of the category comparison chart and the number of
