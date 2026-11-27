@@ -33,12 +33,11 @@ jobs:
       - run: npm run build:preview
 
       - name: Keep the optional one-file download
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: finance-preview-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
-          path: |
-            dist-preview/index.html
-            dist-preview/sample-workbook.xlsx
-            dist-preview/icons/
+          # archive: false uploads the single file as it is (no zip), so it
+          # downloads as a plain index.html
+          path: dist-preview/index.html
+          archive: false
           retention-days: 30
           if-no-files-found: error
