@@ -3034,47 +3034,77 @@ button.mk-day:focus-visible {
   background: #f8fafc;
 }
 
-/* Phones: the table fits the screen instead of scrolling sideways (which
-   hid the Amount column). Mode is left out here: the Payment mode chart
-   above shows it, and search still finds it. */
+/* Phones: Date stays pinned on the left and Amount on the right; between
+   them Particular fills the visible middle, and Category and Mode follow
+   it, reached by scrolling the middle sideways. The table is exactly the
+   two scroll-only columns (200px) wider than the box. */
 @media (max-width: 700px) {
   .tx-sub .scroll table {
+    width: calc(100% + 200px);
     min-width: 0;
     font-size: 12px;
   }
 
   .tx-sub col:nth-child(1) {
-    width: 27% !important;
+    width: 86px !important;
   }
 
   .tx-sub col:nth-child(2) {
-    width: 29% !important;
+    width: auto !important;
   }
 
   .tx-sub col:nth-child(3) {
-    width: 21% !important;
+    width: 110px !important;
   }
 
   .tx-sub col:nth-child(4) {
-    width: 23% !important;
+    width: 90px !important;
   }
 
   .tx-sub col:nth-child(5) {
-    width: 0 !important;
-  }
-
-  .tx-sub th:nth-child(4),
-  .tx-sub td:nth-child(4) {
-    display: none;
+    width: 82px !important;
   }
 
   .tx-sub .scroll th,
   .tx-sub .scroll td {
-    padding: 10px 5px;
+    padding: 10px 6px;
   }
 
   .tx-sub .vspacer td {
     padding: 0;
+  }
+
+  /* The two pinned columns: solid background so the middle slides under
+     them, and a thin shadow on the inner edge */
+  .tx-sub tr.vrow td:first-child,
+  .tx-sub th:first-child {
+    position: sticky;
+    left: 0;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+
+  .tx-sub tr.vrow td:last-child,
+  .tx-sub th:last-child {
+    position: sticky;
+    right: 0;
+    box-shadow: -1px 0 0 #e2e8f0;
+  }
+
+  .tx-sub tr.vrow td:first-child,
+  .tx-sub tr.vrow td:last-child {
+    z-index: 1;
+    background: #fff;
+  }
+
+  .tx-sub tr.vrow:hover td:first-child,
+  .tx-sub tr.vrow:hover td:last-child {
+    background: #f8fafc;
+  }
+
+  /* Header corners stay above both the header row and the pinned columns */
+  .tx-sub th:first-child,
+  .tx-sub th:last-child {
+    z-index: 3;
   }
 }
 

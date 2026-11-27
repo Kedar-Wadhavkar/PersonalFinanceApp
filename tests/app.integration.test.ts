@@ -243,6 +243,26 @@ describe("loading the market file next to it", () => {
     expect(body).toContain("booked+₹200");
     expect(body).toContain("Chargespaidonallorders:₹5");
   });
+  it("goes back and forth between Market and the module pages", () => {
+    const page = () =>
+      ["modulePage", "overviewPage", "marketPage"].find(visible) + (visible("modulePage") ? ":" + text("pageTitle") : "");
+    const go = (sel: string) => click(document.querySelector(`.side-item${sel}`));
+    // Income was the module shown before Market: it must open again
+    go("[data-module='income']");
+    expect(page()).toBe("modulePage:Income");
+    go("[data-page='market']");
+    expect(page()).toBe("marketPage");
+    go("[data-module='expense']");
+    expect(page()).toBe("modulePage:Expense");
+    go("[data-page='market']");
+    go("[data-module='expense']");
+    expect(page()).toBe("modulePage:Expense");
+    go("[data-page='overview']");
+    go("[data-module='expense']");
+    expect(page()).toBe("modulePage:Expense");
+    go("[data-page='market']");
+    expect(page()).toBe("marketPage");
+  });
 });
 
 describe("files that cannot be read", () => {

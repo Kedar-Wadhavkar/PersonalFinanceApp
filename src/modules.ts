@@ -124,7 +124,9 @@ export function selectModule(key: ModuleKey): void {
 export function setupModuleNav(): void {
   document.querySelectorAll<HTMLElement>(".side-item[data-module]").forEach((btn) => {
     btn.onclick = () => {
-      if (btn.dataset.module === activeModule && activePage !== "overview") return;
+      // Already on this module's page: nothing to do. (From the Overview or
+      // Market page, the module last shown must still open again.)
+      if (btn.dataset.module === activePage) return;
       selectModule(btn.dataset.module as ModuleKey);
       window.scrollTo({ top: 0 });
     };
