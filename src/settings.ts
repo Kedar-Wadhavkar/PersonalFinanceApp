@@ -1,6 +1,7 @@
 import { CONFIG } from "./config";
 import { rebuildAll } from "./rebuild";
 import { MODULES, activeModule, moduleData } from "./modules";
+import { nwState, renderNetWorth } from "./networth";
 import { activePage, overviewState, renderOverview } from "./overview";
 import { activeCurrency, allRows, setActiveCurrency, setRows, settings } from "./state";
 import type { SettingsListKey } from "./types";
@@ -114,6 +115,9 @@ export function setupSettings(): void {
     if (activePage === "overview") {
       overviewState.month = null; // latest month of this currency
       renderOverview();
+    } else if (activePage === "networth") {
+      nwState.month = null;
+      renderNetWorth();
     }
     else rebuildAll();
   };

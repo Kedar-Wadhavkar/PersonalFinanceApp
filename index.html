@@ -54,7 +54,7 @@
           <button type="button" class="side-item" data-module="expense"><span class="side-dot" style="background:#f59e0b"></span><span class="side-name">Expense</span><span class="side-badge" data-count="expense"></span></button>
           <button type="button" class="side-item" data-module="income"><span class="side-dot" style="background:#2563eb"></span><span class="side-name">Income</span><span class="side-badge" data-count="income"></span></button>
           <button type="button" class="side-item" data-page="market"><span class="side-dot" style="background:#7c3aed"></span><span class="side-name">Market</span><span class="side-badge" data-count="market"></span></button>
-          <button type="button" class="side-item" disabled><span class="side-dot" style="background:#0f766e"></span><span class="side-name">Net worth</span><span class="side-badge">soon</span></button>
+          <button type="button" class="side-item" data-page="networth"><span class="side-dot" style="background:#0f766e"></span><span class="side-name">Net worth</span><span class="side-badge" data-count="networth"></span></button>
           <button type="button" class="side-item" disabled><span class="side-dot" style="background:#be123c"></span><span class="side-name">Loans</span><span class="side-badge">soon</span></button>
           <button type="button" class="side-item" disabled><span class="side-dot" style="background:#475569"></span><span class="side-name">Budgets &amp; goals</span><span class="side-badge">soon</span></button>
         </div>
@@ -472,6 +472,16 @@
         <div class="small" id="mkSub">Shares, ETFs and mutual funds</div>
       </div>
       <div id="mkBody"></div>
+    </main>
+
+    <!-- ======================================== NET WORTH PAGE ========================================
+         Accounts sheet + market file, month by month. Filled by networth.ts. -->
+    <main class="wrap ov-page" id="networthPage" hidden>
+      <div class="page-head">
+        <h1 class="page-title">Net worth</h1>
+        <div class="small" id="nwSub">What you own minus what you owe</div>
+      </div>
+      <div id="nwBody"></div>
     </main>
 
     <!-- ======================================== INSIGHTS PANEL ========================================

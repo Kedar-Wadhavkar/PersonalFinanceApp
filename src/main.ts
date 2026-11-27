@@ -11,6 +11,8 @@ import { setupInsights } from "./insights";
 import { setupRecurring } from "./recurringPanel";
 import { renderLineChart, setupLineChartEvents } from "./lineChart";
 import { parseMarket, selectMarket, setMarketData, setupMarket, updateMarketCount } from "./market";
+import { resetSimulator } from "./forecast";
+import { nwState, parseAccounts, selectNetWorth, setAccountsData, setupNetWorth, updateNetWorthCount } from "./networth";
 import { MODULES, MODULE_KEYS, activeModule, moduleData, selectModule, setupModuleNav } from "./modules";
 import { renderMultiYear, resetMultiYear } from "./monthlyCompare";
 import { activePage, overviewState, selectOverview, setupOverview, showPage } from "./overview";
@@ -56,19 +58,25 @@ $<HTMLInputElement>("file").onchange = async (e) => {
     const parsed = {} as Record<ModuleKey, ModuleParseResult>;
     MODULE_KEYS.forEach((key) => (parsed[key] = parseMatrices(sheets, MODULES[key])));
     const market = parseMarket(sheets);
+    const accounts = parseAccounts(sheets);
     const total = MODULE_KEYS.reduce((n, key) => n + parsed[key].records.length, 0);
-    if (!total && !market) {
+    const wasPage = activePage;
+    if (!total && !market && !accounts?.entries.length) {
       const skippedAll = MODULE_KEYS.reduce((n, key) => n + parsed[key].skipped.count, 0);
       throw Error(
         skippedAll
           ? `tables found, but none of their ${skippedAll} rows had a readable date and amount`
-          : 'no usable rows: check the sheet names ("Expense", "Income"), the table headings (Date, Amount, Category, Mode; for the market file Date, Order, Holding, Units, UnitAvg) and the settings sheets',
+          : 'no usable rows: check the sheet names ("Expense", "Income"), the table headings (Date, Amount, Category, Mode; for the Accounts sheet Date, Account, Type, Balance; for the market file Date, Order, Holding, Units, UnitAvg) and the settings sheets',
       );
     }
 
     if (total) {
       MODULE_KEYS.forEach((key) => (moduleData[key] = parsed[key]));
       loadedFiles.finance = names;
+    }
+    if (accounts) {
+      setAccountsData(accounts);
+      if (!total) loadedFiles.finance = names;
     }
     if (market) {
       setMarketData(market);
@@ -78,13 +86,19 @@ $<HTMLInputElement>("file").onchange = async (e) => {
     $("fileName").textContent = shown;
     $("fileName").title = shown;
     updateMarketCount();
+    updateNetWorthCount();
+    resetSimulator();
 
     if (total) {
       // Stay on the module shown, unless it has nothing in this workbook
       const stay = parsed[activeModule].records.length;
       selectModule(stay ? activeModule : MODULE_KEYS.find((k) => parsed[k].records.length)!);
     }
-    if (total && parsed.income.records.length && parsed.expense.records.length) {
+    if (wasPage === "networth" || (accounts && !total && !market)) {
+      // Stay on (or open) the Net worth page, at the newest month
+      nwState.month = null;
+      selectNetWorth();
+    } else if (total && parsed.income.records.length && parsed.expense.records.length) {
       // Both Income and Expense: there is something to combine, open the Overview
       overviewState.month = null;
       selectOverview();
@@ -195,6 +209,7 @@ setupInsights();
 setupRecurring();
 setupOverview();
 setupMarket();
+setupNetWorth();
 setupLineChartEvents();
 setupUpperSort();
 setupKpiSwitch();
