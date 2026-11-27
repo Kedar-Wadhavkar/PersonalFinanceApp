@@ -172,6 +172,14 @@ describe("parseMarket", () => {
     expect(data.dividends).toEqual([{ date: "2025-06-01", holding: "NIFTYBEES", amount: 15 }]);
   });
 
+  it("reads the instrument type from an Instrument heading (and still from Category)", () => {
+    const orders = sheet("Orders", [ORDERS_HEAD, ["01-01-2025", "Buy", "NIFTYBEES", 1, 100]]);
+    const withInstrument = parseMarket([orders, sheet("P", [["Holding", "LTP", "Instrument"], ["NIFTYBEES", 110, "ETF"]])])!;
+    const withCategory = parseMarket([orders, sheet("P", [["Holding", "LTP", "Category"], ["NIFTYBEES", 110, "ETF"]])])!;
+    expect(withInstrument.info.get("NIFTYBEES")?.category).toBe("ETF");
+    expect(withCategory.info.get("NIFTYBEES")?.category).toBe("ETF");
+  });
+
   it("returns null without an orders table", () => {
     expect(parseMarket([sheet("Sheet2", [["Holding", "LTP"], ["A", 1]])])).toBeNull();
   });
