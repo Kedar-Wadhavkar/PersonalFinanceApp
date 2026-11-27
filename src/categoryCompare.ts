@@ -1,11 +1,17 @@
+import { clearChart, drawGroupedBars } from "./charts";
+import { CONFIG } from "./config";
+import { createFilterGroup } from "./filterGroup";
+import { catalog, highlight, rows } from "./state";
+import type { GroupedSums } from "./charts";
+
 /* =========================================================================
-   categoryCompare.js
+   categoryCompare.ts
    "Category-wise comparison": grouped bars, one group per category, one bar
    per year (up to CONFIG.maxCompareYears years). CONFIG.compareCategoriesInView
    categories fit the chart; more make it scroll sideways.
 
    Has its own filters that do NOT affect the main dashboard.
-   The chart itself is drawn by charts.js.
+   The chart itself is drawn by charts.ts.
    ========================================================================= */
 
 // The four dropdowns of this section (built by setupCategoryYear)
@@ -23,19 +29,19 @@ const categoryFilters = createFilterGroup({
 });
 
 // Build the four dropdowns from the loaded data, then draw the chart
-function setupCategoryYear() {
+export function setupCategoryYear(): void {
   categoryFilters.init();
   renderCategoryYear();
 }
 
 // The Reset button of this section
-function resetCategoryYear() {
+export function resetCategoryYear(): void {
   categoryFilters.init();
   highlight.category = null;
   renderCategoryYear();
 }
 
-function renderCategoryYear() {
+export function renderCategoryYear(): void {
   const selectedYears = categoryFilters.years.values();
   const selectedCategories = categoryFilters.cats.values();
   const months = categoryFilters.months.set();
@@ -54,10 +60,10 @@ function renderCategoryYear() {
 
   // Total amount for every category/year pair: sums[category][year].
   // (Object.create(null) so a category called "constructor" is safe.)
-  const sums = Object.create(null);
+  const sums: GroupedSums = Object.create(null);
   selectedCategories.forEach((c) => {
     sums[c] = {};
-    years.forEach((y) => (sums[c][y] = 0));
+    years.forEach((y) => (sums[c]![y] = 0));
   });
 
   const yearSet = new Set(years);
@@ -69,12 +75,12 @@ function renderCategoryYear() {
       months.has(r.Month) &&
       modes.has(r.Mode)
     ) {
-      perYear[r.Year] += r.Amount;
+      perYear[r.Year]! += r.Amount;
     }
   });
 
   // Biggest categories (over the years shown) first
-  const total = (c) => years.reduce((s, y) => s + sums[c][y], 0);
+  const total = (c: string) => years.reduce((s, y) => s + sums[c]![y]!, 0);
   const categories = [...selectedCategories].sort(
     (a, b) => total(b) - total(a) || a.localeCompare(b),
   );

@@ -1,5 +1,10 @@
+import { current } from "./filters";
+import { rows, setTableRows, txSort, view } from "./state";
+import type { TableColumn, Transaction } from "./types";
+import { $, esc, money } from "./utils";
+
 /* =========================================================================
-table.js
+table.ts
 The transactions table.
 
 Built for tens of thousands of rows:
@@ -27,27 +32,28 @@ const textCollator = new Intl.Collator(undefined, { sensitivity: "base" });
 /* ------------ Sorting ------------ */
 
 // Put the records in the order of the table's sort column
-function sortTableRows() {
+export function sortTableRows(): void {
     const col = txSort.col;
     const sign = txSort.dir === "asc" ? 1 : -1;
-    let compare;
+    let compare: (a: Transaction, b: Transaction) => number;
 
     if (col === "Amount") {
-        compare = (a, b) => (a.Amount - b.Amount) * sign;
+        compare = (a: Transaction, b: Transaction) => (a.Amount - b.Amount) * sign;
     } else if (col === "Date") {
         // Dates are "YYYY-MM-DD", so plain text comparison orders them correctly
-        compare = (a, b) => (a.Date < b.Date ? -1 : a.Date > b.Date ? 1 : 0) * sign;
+        compare = (a: Transaction, b: Transaction) => (a.Date < b.Date ? -1 : a.Date > b.Date ? 1 : 0) * sign;
     } else {
-        compare = (a, b) => textCollator.compare(a[col], b[col]) * sign;
+        const text = col; // Particular, Category or Mode
+        compare = (a: Transaction, b: Transaction) => textCollator.compare(a[text], b[text]) * sign;
     }
 
     // Sort a copy of the original order, so equal values keep file order
-    tableRows = [...rows].sort(compare);
+    setTableRows([...rows].sort(compare));
 }
 
 // Show the ↓ / ↑ arrow on the column the table is sorted by
-function updateTxHeaders() {
-    document.querySelectorAll("th.sortable").forEach((th) => {
+function updateTxHeaders(): void {
+    document.querySelectorAll<HTMLElement>("th.sortable").forEach((th) => {
         // The icon (see .sortarrow in main.css) lights its up triangle for
         // ascending (A-Z, oldest, smallest first) and its down triangle for
         // descending; a column that is not sorted keeps both light.
@@ -62,24 +68,24 @@ function updateTxHeaders() {
 
 /* ------------ Drawing only the visible rows ------------ */
 
-function tableScroller() {
-    return $("tbody").closest(".scroll");
+function tableScroller(): HTMLElement {
+    return $("tbody").closest<HTMLElement>(".scroll")!;
 }
 
 // Show the first row of the transactions table again.
 // Called whenever the filters or the search text change.
-function scrollTableToTop() {
+export function scrollTableToTop(): void {
     tableScroller().scrollTop = 0;
 }
 
 // An empty row that stands in for the rows that are not on the page
-function spacerRow(height) {
+function spacerRow(height: number): string {
     return height > 0
         ? `<tr class="vspacer" aria-hidden="true"><td colspan="5" style="height:${height}px"></td></tr>`
         : "";
 }
 
-function rowHtml(r) {
+function rowHtml(r: Transaction): string {
     const particular = esc(r.Particular);
     const category = esc(r.Category);
     const mode = esc(r.Mode);
@@ -87,7 +93,7 @@ function rowHtml(r) {
 }
 
 // Draw the rows that are in view now (does nothing if they already are)
-function drawVisibleRows(force = false) {
+function drawVisibleRows(force = false): void {
     const body = $("tbody");
     const scroller = tableScroller();
     const list = view.records;
@@ -110,7 +116,7 @@ function drawVisibleRows(force = false) {
     tableState.end = last;
 
     let html = spacerRow(first * rh);
-    for (let i = first; i < last; i++) html += rowHtml(list[i]);
+    for (let i = first; i < last; i++) html += rowHtml(list[i]!);
     html += spacerRow((n - last) * rh);
     body.innerHTML = html;
 
@@ -126,23 +132,23 @@ function drawVisibleRows(force = false) {
 }
 
 // Draw the table from view.records (after any filter / sort change)
-function renderTable() {
+export function renderTable(): void {
     drawVisibleRows(true);
 }
 
 // The row height can change with the screen size (phones use more padding)
-function resetTableMetrics() {
+export function resetTableMetrics(): void {
     tableState.rowHeight = 0;
     drawVisibleRows(true);
 }
 
 /* ------------ Header clicks and scrolling ------------ */
 
-function setupTxSort() {
+export function setupTxSort(): void {
     // Clicking a header sorts by it; clicking again flips the direction
-    document.querySelectorAll("th.sortable").forEach((th) => {
+    document.querySelectorAll<HTMLElement>("th.sortable").forEach((th) => {
         th.onclick = () => {
-            const col = th.dataset.col;
+            const col = th.dataset.col as TableColumn;
             if (txSort.col === col) {
                 txSort.dir = txSort.dir === "asc" ? "desc" : "asc";
             } else {

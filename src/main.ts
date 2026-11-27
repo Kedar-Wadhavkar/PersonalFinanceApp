@@ -1,25 +1,28 @@
+import "../styles/main.css";
+import { renderCategoryYear, resetCategoryYear } from "./categoryCompare";
+import { CONFIG } from "./config";
+import { redrawAreas, render, setupBarClicks, setupBarFilterResets, setupKpiSwitch, setupUpperSort } from "./dashboard";
+import { relayoutDonuts, resetDonuts } from "./donuts";
+import { parseMatrices, workbookMatrices } from "./excel";
+import { FILTER_PREFIXES, filterMultiIds } from "./filterGroup";
+import { resetDashboardFilters, updateSearchClear } from "./filters";
+import { relayoutHeatmap, resetHeatmap, setupHeatmapClicks } from "./heatmap";
+import { setupInsights } from "./insights";
+import { renderLineChart, setupLineChartEvents } from "./lineChart";
+import { parseMarket, selectMarket, setMarketData, setupMarket, updateMarketCount } from "./market";
+import { MODULES, MODULE_KEYS, activeModule, moduleData, selectModule, setupModuleNav } from "./modules";
+import { renderMultiYear, resetMultiYear } from "./monthlyCompare";
+import { activePage, overviewState, selectOverview, setupOverview, showPage } from "./overview";
+import { setupSettings } from "./settings";
+import { resetTableMetrics, scrollTableToTop, setupTxSort } from "./table";
+import type { ModuleKey, ModuleParseResult, SheetMatrix } from "./types";
+import { $, closeMenus, debounce, esc, setMenuOpen, wireMultiToggles } from "./utils";
+
 /* =========================================================================
-main.js
+main.ts
 Start-up: connects buttons to the functions in the other files.
-This file loads LAST.
+This is the entry point that Vite builds (see index.html).
 ========================================================================= */
-
-// Rebuild everything from the current `rows`
-function rebuildAll() {
-    refreshCatalog();
-    sortTableRows();
-    scrollTableToTop();
-    buildFilters();
-
-    computeKpis();
-    renderKpis();
-    render();
-    setupMultiYear();
-    setupCategoryYear();
-    setupHeatmap();
-    setupLineChart();
-    setupDonuts();
-}
 
 /* ------------ Loading a workbook ------------ */
 
@@ -28,21 +31,21 @@ function rebuildAll() {
 // Market) that the chosen files do not contain keeps what was loaded before.
 const loadedFiles = { finance: "", market: "" };
 
-$("file").onchange = async (e) => {
-  const input = e.target;
-  const files = [...input.files];
+$<HTMLInputElement>("file").onchange = async (e) => {
+  const input = e.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
   if (!files.length) return;
 
   // Show that a (large) file is being read
   const label = $("uploadText");
   label.textContent = "Loading...";
-  input.closest(".upload").setAttribute("aria-busy", "true");
+  input.closest(".upload")!.setAttribute("aria-busy", "true");
 
   try {
-    const sheets = [];
+    const sheets: SheetMatrix[] = [];
     const names = files.map((f) => f.name).join(", ");
     for (const file of files) sheets.push(...(await workbookMatrices(await file.arrayBuffer())));
-    const parsed = {};
+    const parsed = {} as Record<ModuleKey, ModuleParseResult>;
     MODULE_KEYS.forEach((key) => (parsed[key] = parseMatrices(sheets, MODULES[key])));
     const market = parseMarket(sheets);
     const total = MODULE_KEYS.reduce((n, key) => n + parsed[key].records.length, 0);
@@ -60,7 +63,7 @@ $("file").onchange = async (e) => {
       loadedFiles.finance = names;
     }
     if (market) {
-      marketData = market;
+      setMarketData(market);
       loadedFiles.market = names;
     }
     const shown = [...new Set([loadedFiles.finance, loadedFiles.market].filter(Boolean))].join(" · ");
@@ -71,7 +74,7 @@ $("file").onchange = async (e) => {
     if (total) {
       // Stay on the module shown, unless it has nothing in this workbook
       const stay = parsed[activeModule].records.length;
-      selectModule(stay ? activeModule : MODULE_KEYS.find((k) => parsed[k].records.length));
+      selectModule(stay ? activeModule : MODULE_KEYS.find((k) => parsed[k].records.length)!);
     }
     if (total && parsed.income.records.length && parsed.expense.records.length) {
       // Both Income and Expense: there is something to combine, open the Overview
@@ -83,15 +86,15 @@ $("file").onchange = async (e) => {
       selectOverview();
     }
     window.scrollTo({ top: 0 });
-  } catch (x) {
+  } catch (x: unknown) {
     if (activePage !== activeModule) showPage(null); // the message is on the module page
     $("err").innerHTML =
       '<div class="error">Could not read the workbook. Use an .xlsx file with "Expense" and/or "Income" sheets, each with Date, Amount, Category and Mode headings (plus Particulars, Currency, Credit, Principle if you have them) in one of the first 5 rows, and a year heading above each block. Technical detail: ' +
-        esc(x.message || x) +
+        esc((x instanceof Error && x.message) || x) +
       "</div>";
   } finally {
     label.textContent = "Load Excel";
-    input.closest(".upload").removeAttribute("aria-busy");
+    input.closest(".upload")!.removeAttribute("aria-busy");
     // Clear the choice, so picking the SAME file again (e.g. after editing
     // it in Excel) still triggers a reload
     input.value = "";
@@ -122,7 +125,7 @@ document.addEventListener("keydown", (e) => {
     const open = document.querySelector(".sortwrap.open, .multi.open");
     if (!open) return;
     closeMenus();
-    open.querySelector(":scope > button")?.focus();
+    open.querySelector<HTMLButtonElement>(":scope > button")?.focus();
 });
 
 $("dashReset").onclick = resetDashboardFilters;
@@ -137,7 +140,7 @@ $("search").oninput = () => {
     renderSoon();
 };
 $("searchClear").onclick = () => {
-    $("search").value = "";
+    $<HTMLInputElement>("search").value = "";
     updateSearchClear();
     scrollTableToTop();
     render();

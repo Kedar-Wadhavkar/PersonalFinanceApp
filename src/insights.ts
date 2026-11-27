@@ -1,9 +1,16 @@
+import { CONFIG } from "./config";
+import { activeModule, moduleData } from "./modules";
+import { displayDate } from "./settings";
+import { activeCurrency, rows, view } from "./state";
+import type { ModuleKey, Transaction } from "./types";
+import { $, esc, money, moneyShort } from "./utils";
+
 /* =========================================================================
-insights.js
+insights.ts
 The insights panel on the right of the page (#insights).
 
 Redrawn after every change of the dashboard filters (called from render()
-in dashboard.js), so it always describes what the page shows now:
+in dashboard.ts), so it always describes what the page shows now:
   1. Your selection ..... total, entries, average entry, latest month vs
                           the month before (the dashboard filters apply)
   2. Biggest moves ...... per category: latest month of the data vs the
@@ -16,12 +23,12 @@ in dashboard.js), so it always describes what the page shows now:
 ========================================================================= */
 
 // "2026-10-17" -> month number since year 0 (2026*12 + 9), for comparing
-const monthIndex = (iso) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1;
-const monthName = (i) => `${CONFIG.months[i % 12]} ${Math.floor(i / 12)}`;
+export const monthIndex = (iso: string): number => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1;
+export const monthName = (i: number): string => `${CONFIG.months[i % 12]} ${Math.floor(i / 12)}`;
 
 // Total per month index of a list of records
-function totalsByMonth(list) {
-  const totals = new Map();
+export function totalsByMonth(list: Transaction[]): Map<number, number> {
+  const totals = new Map<number, number>();
   for (const r of list) {
     const m = monthIndex(r.Date);
     totals.set(m, (totals.get(m) || 0) + r.Amount);
@@ -30,7 +37,7 @@ function totalsByMonth(list) {
 }
 
 // "▲ 18% more than Sep 2026" / "▼ 7% less ..." / "" when not comparable
-function changeText(now, before, beforeName) {
+function changeText(now: number, before: number | undefined, beforeName: string): string {
   if (!before) return "";
   const pct = Math.round(((now - before) / Math.abs(before)) * 100);
   if (pct === 0) return `Same as ${beforeName}`;
@@ -40,10 +47,10 @@ function changeText(now, before, beforeName) {
 }
 
 // Colour of a rise: bad (amber) for spending, good (teal) for income
-const UP_COLOR = () => (activeModule === "income" ? "#0f766e" : "#b45309");
-const DOWN_COLOR = () => (activeModule === "income" ? "#b45309" : "#0f766e");
+const UP_COLOR = (): string => (activeModule === "income" ? "#0f766e" : "#b45309");
+const DOWN_COLOR = (): string => (activeModule === "income" ? "#b45309" : "#0f766e");
 
-function renderInsights() {
+export function renderInsights(): void {
   const box = $("insights");
   if (!box) return;
   if (!rows.length) {
@@ -58,7 +65,7 @@ function renderInsights() {
   const lastM = byMonth.size ? Math.max(...byMonth.keys()) : null;
   let monthLine = "";
   if (lastM !== null) {
-    const now = byMonth.get(lastM);
+    const now = byMonth.get(lastM)!;
     const before = byMonth.get(lastM - 1);
     const change = changeText(now, before, monthName(lastM - 1));
     const up = before && now > before;
@@ -82,8 +89,8 @@ function renderInsights() {
   /* ---- 2. Biggest moves: latest month of the data vs the month before ---- */
   let latest = -1;
   for (const r of rows) latest = Math.max(latest, monthIndex(r.Date));
-  const nowCat = new Map();
-  const prevCat = new Map();
+  const nowCat = new Map<string, number>();
+  const prevCat = new Map<string, number>();
   for (const r of rows) {
     const m = monthIndex(r.Date);
     if (m === latest) nowCat.set(r.Category, (nowCat.get(r.Category) || 0) + r.Amount);
@@ -134,18 +141,18 @@ function renderInsights() {
     </section>`;
 
   /* ---- 4. This month: income vs spending (both modules, same currency) ---- */
-  const inCur = (key) =>
+  const inCur = (key: ModuleKey): Transaction[] =>
     (moduleData[key]?.records || []).filter((r) => r.Currency === activeCurrency);
   const income = inCur("income");
   const expense = inCur("expense");
   // The latest month BOTH sheets have reached (so a month without any
   // income yet is not shown as "no income")
-  const lastOf = (list) => list.reduce((a, r) => Math.max(a, monthIndex(r.Date)), -1);
+  const lastOf = (list: Transaction[]) => list.reduce((a, r) => Math.max(a, monthIndex(r.Date)), -1);
   const both = Math.min(lastOf(income), lastOf(expense));
-  const sumIn = (list) => list.reduce((a, r) => a + (monthIndex(r.Date) === both ? r.Amount : 0), 0);
+  const sumIn = (list: Transaction[]) => list.reduce((a, r) => a + (monthIndex(r.Date) === both ? r.Amount : 0), 0);
   const inc = sumIn(income);
   const exp = sumIn(expense);
-  let monthCard;
+  let monthCard: string;
   if (!income.length || !expense.length) {
     monthCard = `<section class="rail-card"><span class="rail-label">Income vs spending</span><div class="small">Needs both an Income and an Expense sheet in this currency.</div></section>`;
   } else {
@@ -178,11 +185,11 @@ function renderInsights() {
 }
 
 // A click on a top entry searches the transactions table for it
-function setupInsights() {
+export function setupInsights(): void {
   $("insights").addEventListener("click", (e) => {
-    const btn = e.target.closest(".rail-entry");
+    const btn = (e.target as Element).closest<HTMLElement>(".rail-entry");
     if (!btn) return;
-    $("search").value = btn.dataset.find;
+    $<HTMLInputElement>("search").value = btn.dataset.find!;
     $("search").dispatchEvent(new Event("input"));
     $("secTx").scrollIntoView({ behavior: "smooth", block: "start" });
   });

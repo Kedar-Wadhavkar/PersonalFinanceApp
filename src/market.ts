@@ -1,5 +1,22 @@
+import { CONFIG } from "./config";
+import { excelDate, parseAmount } from "./excel";
+import { activePage, showPage } from "./overview";
+import { activeCurrency, setActiveCurrency } from "./state";
+import type {
+  CashFlow,
+  Dividend,
+  Holding,
+  HoldingInfo,
+  MarketData,
+  MarketOrder,
+  MarketSummary,
+  SheetGrid,
+  SheetMatrix,
+} from "./types";
+import { $, esc, money, moneyShort, setMoneyCurrency } from "./utils";
+
 /* =========================================================================
-market.js
+market.ts
 The Market page (#marketPage): shares, ETFs and mutual funds.
 
 Reads up to three tables, found by their HEADINGS (sheet names do not
@@ -17,16 +34,33 @@ holdings table that is a few days old still shows the latest buys. Only the
 price (LTP) and the category come from the holdings table.
 ========================================================================= */
 
-let marketData = null; // parseMarket() result, null until a file has orders
+let marketData: MarketData | null = null; // parseMarket() result, null until a file has orders
+export function setMarketData(value: MarketData): void {
+  marketData = value;
+}
 
-const MK_CATEGORY_COLORS = {
+// Every drawing function below runs only once marketData is set
+const data = (): MarketData => marketData!;
+
+const MK_CATEGORY_COLORS: Record<string, string> = {
   ETF: "#2563eb",
   MutualFund: "#0f766e",
   Stock: "#7c3aed",
 };
-const mkCatColor = (c) => MK_CATEGORY_COLORS[c] || "#64748b";
+const mkCatColor = (c: string): string => MK_CATEGORY_COLORS[c] || "#64748b";
 
-const mkState = {
+const mkState: {
+  calYear: number | null;
+  category: string;
+  treeBy: "invested" | "current";
+  sortKey: string;
+  sortDir: number;
+  holding: string | null;
+  years: Set<string> | null;
+  orderType: "All" | "Buy" | "Sell";
+  divBy: "month" | "holding";
+  divOpen: Set<string>;
+} = {
   calYear: null,
   category: "All", // bars + treemap filter
   treeBy: "invested", // "invested" | "current"
@@ -41,13 +75,16 @@ const mkState = {
 
 /* ------------ Reading the tables ------------ */
 
-const mkNorm = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9%&]/g, "");
+const mkNorm = (s: unknown): string => String(s ?? "").toLowerCase().replace(/[^a-z0-9%&]/g, "");
 
 // First row (of the top 5) holding all `needed` headings -> { row, cols }
-function mkFindHeader(grid, needed) {
+function mkFindHeader(
+  grid: SheetGrid,
+  needed: string[],
+): { row: number; cols: Record<string, number> } | null {
   for (let r = 0; r < Math.min(5, grid.length); r++) {
     const row = grid[r] || [];
-    const cols = {};
+    const cols: Record<string, number> = {};
     row.forEach((cell, c) => {
       const k = mkNorm(cell);
       if (k && cols[k] === undefined) cols[k] = c;
@@ -57,22 +94,22 @@ function mkFindHeader(grid, needed) {
   return null;
 }
 
-const mkIso = (v) => {
+const mkIso = (v: unknown): string | null => {
   const d = excelDate(v);
   return d ? d.toISOString().slice(0, 10) : null;
 };
 
-const mkNum = (v) => {
+const mkNum = (v: unknown): number | null => {
   const n = parseAmount(v);
-  return Number.isFinite(n) ? n : null;
+  return n !== null && Number.isFinite(n) ? n : null;
 };
 
-function parseMarket(sheets) {
-  const orders = [];
-  const info = new Map();
-  const dividends = [];
+export function parseMarket(sheets: SheetMatrix[]): MarketData | null {
+  const orders: MarketOrder[] = [];
+  const info = new Map<string, HoldingInfo>();
+  const dividends: Dividend[] = [];
   let skipped = 0;
-  const sheetNames = [];
+  const sheetNames: string[] = [];
 
   for (const { name, grid } of sheets) {
     // Orders
@@ -80,7 +117,7 @@ function parseMarket(sheets) {
     if (h) {
       sheetNames.push(name);
       const c = h.cols;
-      const get = (row, key) => (c[key] === undefined ? undefined : row[c[key]]);
+      const get = (row: SheetGrid[number] & {}, key: string) => (c[key] === undefined ? undefined : row[c[key]]);
       for (let r = h.row + 1; r < grid.length; r++) {
         const row = grid[r];
         if (!row) continue;
@@ -93,7 +130,7 @@ function parseMarket(sheets) {
           skipped++;
           continue;
         }
-        const type = /^s/i.test(String(get(row, "order") ?? "")) || units < 0 ? "Sell" : "Buy";
+        const type: MarketOrder["type"] = /^s/i.test(String(get(row, "order") ?? "")) || units < 0 ? "Sell" : "Buy";
         orders.push({
           date,
           type,
@@ -116,14 +153,14 @@ function parseMarket(sheets) {
       for (let r = h.row + 1; r < grid.length; r++) {
         const row = grid[r];
         if (!row) continue;
-        const holding = String(row[c.holding] ?? "").trim();
-        if (!holding || typeof row[c.holding] === "number") continue; // total row
-        const txt = (k) => (c[k] === undefined ? "" : String(row[c[k]] ?? "").trim());
+        const holding = String(row[c.holding!] ?? "").trim();
+        if (!holding || typeof row[c.holding!] === "number") continue; // total row
+        const txt = (k: string) => (c[k] === undefined ? "" : String(row[c[k]] ?? "").trim());
         info.set(holding, {
           category: txt("category") || "Other",
           sector: txt("sector"),
           subSector: txt("subsector"),
-          ltp: mkNum(row[c.ltp]),
+          ltp: mkNum(row[c.ltp!]),
           qty: c.qty === undefined ? null : mkNum(row[c.qty]),
           avg: c.avg === undefined ? null : mkNum(row[c.avg]),
         });
@@ -135,12 +172,12 @@ function parseMarket(sheets) {
     if (h && h.cols.units === undefined) {
       sheetNames.push(name);
       const c = h.cols;
-      const amtCol = c.amount ?? c.dividend;
+      const amtCol = (c.amount ?? c.dividend)!;
       for (let r = h.row + 1; r < grid.length; r++) {
         const row = grid[r];
         if (!row) continue;
-        const date = mkIso(row[c.date]);
-        const holding = String(row[c.holding] ?? "").trim();
+        const date = mkIso(row[c.date!]);
+        const holding = String(row[c.holding!] ?? "").trim();
         const amount = mkNum(row[amtCol]);
         if (date && holding && amount) dividends.push({ date, holding, amount });
       }
@@ -154,14 +191,14 @@ function parseMarket(sheets) {
 /* ------------ Working out the holdings ------------ */
 
 const MK_DAY = 86400000;
-const mkDays = (a, b) => (Date.parse(b) - Date.parse(a)) / MK_DAY;
-const mkToday = () => new Date().toISOString().slice(0, 10);
+const mkDays = (a: string, b: string): number => (Date.parse(b) - Date.parse(a)) / MK_DAY;
+const mkToday = (): string => new Date().toISOString().slice(0, 10);
 
 // Annual return of dated cash flows (negative = money in), by bisection
-function mkXirr(flows) {
+function mkXirr(flows: CashFlow[]): number | null {
   if (flows.length < 2 || !flows.some((f) => f.v > 0) || !flows.some((f) => f.v < 0)) return null;
-  const t0 = flows[0].d;
-  const npv = (r) => flows.reduce((s, f) => s + f.v / Math.pow(1 + r, mkDays(t0, f.d) / 365), 0);
+  const t0 = flows[0]!.d;
+  const npv = (r: number) => flows.reduce((s, f) => s + f.v / Math.pow(1 + r, mkDays(t0, f.d) / 365), 0);
   let lo = -0.9999;
   let hi = 100;
   if (npv(lo) * npv(hi) > 0) return null;
@@ -173,10 +210,14 @@ function mkXirr(flows) {
   return (lo + hi) / 2;
 }
 
-function marketSummary() {
-  const d = marketData;
+// A holding while its orders are added up; the price fields come after
+type HoldingDraft = Pick<Holding, "name" | "qty" | "invested" | "realised" | "charges" | "lots" | "flows"> &
+  Partial<Holding>;
+
+function marketSummary(): MarketSummary {
+  const d = data();
   const today = mkToday();
-  const map = new Map();
+  const map = new Map<string, HoldingDraft>();
   for (const o of d.orders) {
     let h = map.get(o.holding);
     if (!h) {
@@ -199,7 +240,7 @@ function marketSummary() {
       h.flows.push({ d: o.date, v: o.value });
       let left = units; // oldest lots are sold first
       while (left > 1e-9 && h.lots.length) {
-        const lot = h.lots[0];
+        const lot = h.lots[0]!;
         const take = Math.min(lot.units, left);
         lot.units -= take;
         left -= take;
@@ -214,32 +255,38 @@ function marketSummary() {
     }
   }
 
-  const all = [...map.values()];
-  const held = [];
-  for (const h of all) {
+  const drafts = [...map.values()];
+  for (const h of drafts) {
     const i = d.info.get(h.name);
     h.category = i?.category || "Other";
     h.sector = i?.subSector || i?.sector || "";
     h.ltp = i?.ltp ?? null;
     h.avg = h.qty ? h.invested / h.qty : 0;
-    h.current = h.ltp !== null ? h.qty * h.ltp : h.invested;
-    h.pnl = h.current - h.invested;
+    const currentValue = h.ltp !== null ? h.qty * h.ltp : h.invested;
+    h.current = currentValue;
+    h.pnl = currentValue - h.invested;
     h.pct = h.invested ? h.pnl / h.invested : 0;
     h.ltQty = h.lots.filter((l) => mkDays(l.date, today) > 365).reduce((s, l) => s + l.units, 0);
-    h.xirr = h.qty > 1e-9 && h.ltp !== null ? mkXirr([...h.flows, { d: today, v: h.current }]) : null;
-    if (h.qty > 1e-9) held.push(h);
+    h.xirr = h.qty > 1e-9 && h.ltp !== null ? mkXirr([...h.flows, { d: today, v: currentValue }]) : null;
+    h.share = 0;
   }
+  // Every field is filled in now
+  const all = drafts as Holding[];
+  const held = all.filter((h) => h.qty > 1e-9);
   const invested = held.reduce((s, h) => s + h.invested, 0);
   const current = held.reduce((s, h) => s + h.current, 0);
   held.forEach((h) => (h.share = current ? h.current / current : 0));
 
-  const flows = d.orders.map((o) => ({ d: o.date, v: o.type === "Buy" ? -o.value : o.value }));
+  const flows = d.orders.map((o): CashFlow => ({ d: o.date, v: o.type === "Buy" ? -o.value : o.value }));
   const xirr = mkXirr([...flows, { d: today, v: current }]);
 
   // Nifty 50 benchmark: the same cash flows put into the index
   const withIndex = d.orders.filter((o) => o.index && o.eqUnits !== null);
   const lastIx = withIndex[withIndex.length - 1];
-  const bench = lastIx ? { value: lastIx.eqUnits * lastIx.index, index: lastIx.index, date: lastIx.date } : null;
+  const bench =
+    lastIx && lastIx.index !== null && lastIx.eqUnits !== null
+      ? { value: lastIx.eqUnits * lastIx.index, index: lastIx.index, date: lastIx.date }
+      : null;
 
   return {
     held,
@@ -257,24 +304,24 @@ function marketSummary() {
 
 /* ------------ Formatting ------------ */
 
-const mkPriceFmt = () =>
+const mkPriceFmt = (): Intl.NumberFormat =>
   new Intl.NumberFormat(CONFIG.currencyLocales?.[activeCurrency] || CONFIG.currencyLocaleDefault || "en-IN", {
     style: "currency",
     currency: activeCurrency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-let mkPrice = (n) => n;
-const mkPct = (v, digits = 1) => (v === null || v === undefined ? "–" : `${(v * 100).toFixed(digits)}%`);
-const mkSignPct = (v) => (v === null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(1)}%`);
-const mkSigned = (v) => `${v < 0 ? "−" : v > 0 ? "+" : ""}${money(Math.abs(v))}`;
-const mkQty = (q) => (Number.isInteger(Math.round(q * 1000) / 1000) ? String(Math.round(q)) : q.toFixed(3));
-const mkCls = (v) => (v < 0 ? "mk-neg" : v > 0 ? "mk-pos" : "");
-const mkDate = (iso) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+let mkPrice: (n: number) => string = (n) => String(n);
+const mkPct = (v: number | null | undefined, digits = 1): string => (v === null || v === undefined ? "–" : `${(v * 100).toFixed(digits)}%`);
+const mkSignPct = (v: number | null): string => (v === null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(1)}%`);
+const mkSigned = (v: number): string => `${v < 0 ? "−" : v > 0 ? "+" : ""}${money(Math.abs(v))}`;
+const mkQty = (q: number): string => (Number.isInteger(Math.round(q * 1000) / 1000) ? String(Math.round(q)) : q.toFixed(3));
+const mkCls = (v: number): string => (v < 0 ? "mk-neg" : v > 0 ? "mk-pos" : "");
+const mkDate = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 
 /* ------------ Drawing ------------ */
 
-function renderMarket() {
+function renderMarket(): void {
   if (activePage !== "market") return;
   const body = $("mkBody");
   if (!marketData) {
@@ -285,10 +332,10 @@ function renderMarket() {
   mkPrice = mkPriceFmt().format;
   const s = marketSummary();
   const o = marketData.orders;
-  $("mkSub").textContent = `${o.length.toLocaleString(CONFIG.locale)} orders from ${mkDate(o[0].date)} to ${mkDate(o[o.length - 1].date)} · ${s.held.length} holdings`;
+  $("mkSub").textContent = `${o.length.toLocaleString(CONFIG.locale)} orders from ${mkDate(o[0]!.date)} to ${mkDate(o[o.length - 1]!.date)} · ${s.held.length} holdings`;
 
   if (!mkState.holding || !s.all.some((h) => h.name === mkState.holding)) {
-    mkState.holding = [...s.held].sort((a, b) => b.current - a.current)[0]?.name || s.all[0].name;
+    mkState.holding = [...s.held].sort((a, b) => b.current - a.current)[0]?.name || s.all[0]!.name;
   }
 
   body.innerHTML = `
@@ -302,11 +349,11 @@ function renderMarket() {
   mkLayoutTreemap(s);
 }
 
-function mkCards(s) {
+function mkCards(s: MarketSummary): string {
   const noPrice = s.noPrice.length
     ? `${s.noPrice.length} without a price, counted at cost`
     : "At the latest prices (LTP)";
-  const cards = [
+  const cards: { label: string; value: string; sub: string; cls?: string; title?: string }[] = [
     { label: "Invested now", value: money(s.invested), sub: `Cost of ${s.held.length} holdings` },
     { label: "Current value", value: money(s.current), sub: noPrice },
     {
@@ -332,28 +379,28 @@ function mkCards(s) {
       (c) => `<div class="card ov-kpi"${c.title ? ` title="${esc(c.title)}"` : ""}><span class="small ov-kpi-label">${esc(c.label)}</span><b class="${c.cls || ""}">${esc(c.value)}</b><span class="small">${esc(c.sub)}</span></div>`,
     )
     .join("")}</section>
-    <div class="small mk-foot">Charges paid on all orders: ${esc(money(s.charges))}${marketData.skipped ? ` · ${marketData.skipped} order rows skipped (date, holding, units or price missing)` : ""}</div>`;
+    <div class="small mk-foot">Charges paid on all orders: ${esc(money(s.charges))}${data().skipped ? ` · ${data().skipped} order rows skipped (date, holding, units or price missing)` : ""}</div>`;
 }
 
 /* ---- Investment calendar ---- */
 
-function mkCalendar() {
-  const byDay = new Map();
-  for (const o of marketData.orders) {
+function mkCalendar(): string {
+  const byDay = new Map<string, { buy: number; sell: number; list: MarketOrder[] }>();
+  for (const o of data().orders) {
     const e = byDay.get(o.date) || { buy: 0, sell: 0, list: [] };
     e[o.type === "Buy" ? "buy" : "sell"] += o.value;
     e.list.push(o);
     byDay.set(o.date, e);
   }
-  const years = [...new Set(marketData.orders.map((o) => Number(o.date.slice(0, 4))))];
-  if (!years.includes(mkState.calYear)) mkState.calYear = years[years.length - 1];
+  const years = [...new Set(data().orders.map((o) => Number(o.date.slice(0, 4))))];
+  if (mkState.calYear === null || !years.includes(mkState.calYear)) mkState.calYear = years[years.length - 1]!;
   const y = mkState.calYear;
 
   // Colour steps from the buy amounts of every day
   const amounts = [...byDay.values()].map((e) => e.buy).filter((v) => v > 0).sort((a, b) => a - b);
-  const q = (p) => amounts[Math.min(amounts.length - 1, Math.floor(p * amounts.length))] || 0;
+  const q = (p: number) => amounts[Math.min(amounts.length - 1, Math.floor(p * amounts.length))] || 0;
   const steps = [q(0.5), q(0.8), q(0.95)];
-  const level = (v) => (v <= steps[0] ? 1 : v <= steps[1] ? 2 : v <= steps[2] ? 3 : 4);
+  const level = (v: number) => (v <= steps[0] ? 1 : v <= steps[1] ? 2 : v <= steps[2] ? 3 : 4);
 
   const months = CONFIG.months.map((mName, m) => {
     const first = new Date(Date.UTC(y, m, 1));
@@ -392,18 +439,18 @@ function mkCalendar() {
 
 /* ---- Category chips (treemap + bars) ---- */
 
-function mkCategoryChips(s) {
+function mkCategoryChips(s: MarketSummary): string {
   const cats = ["All", ...new Set(s.held.map((h) => h.category))];
   return `<div class="mk-chips" role="group" aria-label="Category">${cats
     .map((c) => `<button type="button" class="mk-chip${c === mkState.category ? " on" : ""}" data-cat="${esc(c)}" aria-pressed="${c === mkState.category}">${c === "All" ? "All" : `<span class="ov-sw" style="background:${mkCatColor(c)}"></span>${esc(c)}`}</button>`)
     .join("")}</div>`;
 }
 
-const mkFiltered = (s) => (mkState.category === "All" ? s.held : s.held.filter((h) => h.category === mkState.category));
+const mkFiltered = (s: MarketSummary): Holding[] => (mkState.category === "All" ? s.held : s.held.filter((h) => h.category === mkState.category));
 
 /* ---- Treemap ---- */
 
-function mkTreemapHtml(s) {
+function mkTreemapHtml(s: MarketSummary): string {
   return `<div class="ov-head">
       <div><div class="graphtitle"><b>Portfolio map</b></div><div class="small">Each box is a holding, sized by its ${mkState.treeBy === "invested" ? "invested amount" : "current value"}. Click one to see its buys.</div></div>
       <div class="ov-period" role="group" aria-label="Size by">
@@ -416,14 +463,20 @@ function mkTreemapHtml(s) {
 }
 
 // Squarified treemap: items [{value}] -> same items with x, y, w, h
-function mkSquarify(items, x, y, w, h) {
-  const out = [];
+function mkSquarify<I extends { value: number }>(
+  items: I[],
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): (I & { x: number; y: number; w: number; h: number })[] {
+  const out: (I & { x: number; y: number; w: number; h: number })[] = [];
   let rest = items.filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
   const total = rest.reduce((s, i) => s + i.value, 0);
   if (!total) return out;
   const scale = (w * h) / total;
-  let row = [];
-  const worst = (r, side) => {
+  let row: I[] = [];
+  const worst = (r: I[], side: number) => {
     const sum = r.reduce((s, i) => s + i.value * scale, 0);
     const max = Math.max(...r.map((i) => i.value * scale));
     const min = Math.min(...r.map((i) => i.value * scale));
@@ -456,7 +509,7 @@ function mkSquarify(items, x, y, w, h) {
   };
   while (rest.length) {
     const side = Math.min(w, h);
-    const next = rest[0];
+    const next = rest[0]!;
     if (!row.length || worst([...row, next], side) <= worst(row, side)) {
       row.push(next);
       rest = rest.slice(1);
@@ -468,7 +521,7 @@ function mkSquarify(items, x, y, w, h) {
   return out;
 }
 
-function mkLayoutTreemap(s) {
+function mkLayoutTreemap(s: MarketSummary): void {
   const box = $("mkTree");
   if (!box) return;
   const W = box.clientWidth || 800;
@@ -500,7 +553,7 @@ function mkLayoutTreemap(s) {
 
 /* ---- Invested vs current value per holding ---- */
 
-function mkBarsHtml(s) {
+function mkBarsHtml(s: MarketSummary): string {
   const list = [...mkFiltered(s)].sort((a, b) => b.invested - a.invested);
   const top = Math.max(1, ...list.map((h) => Math.max(h.invested, h.current)));
   const bars = list
@@ -521,7 +574,10 @@ function mkBarsHtml(s) {
 
 /* ---- Holdings table ---- */
 
-const MK_COLUMNS = [
+type ColumnType = "text" | "qty" | "price" | "money" | "signed" | "pct" | "share" | "lt";
+type HoldingColumn = [keyof Holding, string, ColumnType];
+
+const MK_COLUMNS: HoldingColumn[] = [
   ["name", "Holding", "text"],
   ["category", "Category", "text"],
   ["qty", "Qty", "qty"],
@@ -536,15 +592,16 @@ const MK_COLUMNS = [
   ["xirr", "XIRR", "pct"],
 ];
 
-function mkTableHtml(s) {
-  const key = mkState.sortKey;
+function mkTableHtml(s: MarketSummary): string {
+  const key = mkState.sortKey as keyof Holding;
   const rows = [...s.held].sort((a, b) => {
-    const x = a[key] ?? -Infinity;
-    const y = b[key] ?? -Infinity;
-    return (typeof x === "string" ? x.localeCompare(y) : x - y) * mkState.sortDir;
+    const x = (a[key] ?? -Infinity) as string | number;
+    const y = (b[key] ?? -Infinity) as string | number;
+    return (typeof x === "string" ? x.localeCompare(String(y)) : x - (y as number)) * mkState.sortDir;
   });
-  const cell = (h, [k, , type]) => {
-    const v = h[k];
+  const cell = (h: Holding, [k, , type]: HoldingColumn): string => {
+    // Text columns hold strings, every other column a number (or null)
+    const v = h[k] as never;
     switch (type) {
       case "text":
         return k === "category" ? `<span class="ov-sw" style="background:${mkCatColor(v)}"></span>${esc(v)}` : esc(v);
@@ -561,7 +618,7 @@ function mkTableHtml(s) {
       case "share":
         return esc(mkPct(v));
       case "lt":
-        return h.qty ? esc(mkPct(v / h.qty, 0)) : "–";
+        return h.qty ? esc(mkPct((v as number) / h.qty, 0)) : "–";
     }
     return "";
   };
@@ -585,16 +642,16 @@ function mkTableHtml(s) {
 
 /* ---- Buy history of one holding ---- */
 
-function mkHistoryHtml(s) {
-  const name = mkState.holding;
-  const all = marketData.orders.filter((o) => o.holding === name);
+function mkHistoryHtml(s: MarketSummary): string {
+  const name = mkState.holding!;
+  const all = data().orders.filter((o) => o.holding === name);
   const years = [...new Set(all.map((o) => o.date.slice(0, 4)))];
   const yearsOn = mkState.years && [...mkState.years].some((y) => years.includes(y)) ? mkState.years : new Set(years);
   const list = all.filter((o) => yearsOn.has(o.date.slice(0, 4)) && (mkState.orderType === "All" || o.type === mkState.orderType));
 
   // Change vs the previous buy of this holding (all years)
-  const change = new Map();
-  let prev = null;
+  const change = new Map<MarketOrder, number>();
+  let prev: MarketOrder | null = null;
   for (const o of all) {
     if (o.type !== "Buy") continue;
     if (prev) change.set(o, o.price / prev.price - 1);
@@ -608,13 +665,13 @@ function mkHistoryHtml(s) {
 
   // Table grouped by year
   let rowsHtml = "";
-  const byYear = new Map();
+  const byYear = new Map<string, MarketOrder[]>();
   list.forEach((o) => {
     const y = o.date.slice(0, 4);
     if (!byYear.has(y)) byYear.set(y, []);
-    byYear.get(y).push(o);
+    byYear.get(y)!.push(o);
   });
-  const sumRow = (label, arr, cls) => {
+  const sumRow = (label: string, arr: MarketOrder[], cls: string) => {
     const buys = arr.filter((o) => o.type === "Buy");
     const qty = buys.reduce((t, o) => t + o.units, 0);
     const val = buys.reduce((t, o) => t + o.value, 0);
@@ -653,7 +710,7 @@ function mkHistoryHtml(s) {
 }
 
 // Bars = units bought (right axis), line = price paid (left axis)
-function mkHistoryChart(list) {
+function mkHistoryChart(list: MarketOrder[]): string {
   if (!list.length) return "";
   const W = 760;
   const H = 300;
@@ -671,9 +728,9 @@ function mkHistoryChart(list) {
   pMax += pad;
   const qMax = Math.max(...list.map((o) => o.units)) * 1.1;
   const step = pw / list.length;
-  const xOf = (i) => L + step * (i + 0.5);
-  const yP = (p) => T + ph - ((p - pMin) / (pMax - pMin)) * ph;
-  const yQ = (q) => T + ph - (q / qMax) * ph;
+  const xOf = (i: number) => L + step * (i + 0.5);
+  const yP = (p: number) => T + ph - ((p - pMin) / (pMax - pMin)) * ph;
+  const yQ = (q: number) => T + ph - (q / qMax) * ph;
   const bw = Math.max(3, Math.min(16, step * 0.5));
   let svg = "";
   for (let k = 0; k <= 4; k++) {
@@ -706,44 +763,46 @@ function mkHistoryChart(list) {
 
 /* ---- Dividends ---- */
 
-function mkDividendsHtml() {
-  const list = marketData.dividends;
+function mkDividendsHtml(): string {
+  const list = data().dividends;
   if (!list.length) {
     return `<div class="graphtitle"><b>Dividends</b></div>
       <div class="nodata small">No dividends found. Add a sheet (in either file) with the headings <b>Date</b>, <b>Holding</b> and <b>Amount</b>, one row per dividend received, and they will show here by month and by holding.</div>`;
   }
   const years = [...new Set(list.map((d) => d.date.slice(0, 4)))].sort();
   const byMonth = mkState.divBy === "month";
-  const groupOf = (d) => (byMonth ? Number(d.date.slice(5, 7)) - 1 : d.holding);
-  const childOf = (d) => (byMonth ? d.holding : Number(d.date.slice(5, 7)) - 1);
-  const label = (v) => (typeof v === "number" ? CONFIG.months[v] : v);
-  const groups = new Map();
+  const groupOf = (d: Dividend): string | number => (byMonth ? Number(d.date.slice(5, 7)) - 1 : d.holding);
+  const childOf = (d: Dividend): string | number => (byMonth ? d.holding : Number(d.date.slice(5, 7)) - 1);
+  const label = (v: string | number): string => (typeof v === "number" ? CONFIG.months[v]! : v);
+  type ByYear = Record<string, number>;
+  const groups = new Map<string | number, Map<string | number, ByYear>>();
   for (const d of list) {
     const g = groupOf(d);
     const c = childOf(d);
     const y = d.date.slice(0, 4);
     if (!groups.has(g)) groups.set(g, new Map());
-    const kids = groups.get(g);
+    const kids = groups.get(g)!;
     if (!kids.has(c)) kids.set(c, {});
-    kids.get(c)[y] = (kids.get(c)[y] || 0) + d.amount;
+    const byY = kids.get(c)!;
+    byY[y] = (byY[y] || 0) + d.amount;
   }
-  const sortKeys = (keys) => [...keys].sort((a, b) => (typeof a === "number" ? a - b : String(a).localeCompare(String(b))));
-  const cells = (byY) => {
+  const sortKeys = (keys: Iterable<string | number>) => [...keys].sort((a, b) => (typeof a === "number" ? a - (b as number) : String(a).localeCompare(String(b))));
+  const cells = (byY: ByYear) => {
     const tot = years.reduce((t, y) => t + (byY[y] || 0), 0);
     return years.map((y) => `<td class="num">${byY[y] ? esc(mkPrice(byY[y]).replace(/^[^\d-]+/, "")) : ""}</td>`).join("") + `<td class="num"><b>${esc(mkPrice(tot).replace(/^[^\d-]+/, ""))}</b></td>`;
   };
   let rows = "";
-  const grand = {};
+  const grand: ByYear = {};
   for (const g of sortKeys(groups.keys())) {
-    const kids = groups.get(g);
-    const sum = {};
-    for (const v of kids.values()) for (const y in v) sum[y] = (sum[y] || 0) + v[y];
-    for (const y in sum) grand[y] = (grand[y] || 0) + sum[y];
+    const kids = groups.get(g)!;
+    const sum: ByYear = {};
+    for (const v of kids.values()) for (const y in v) sum[y] = (sum[y] || 0) + v[y]!;
+    for (const y in sum) grand[y] = (grand[y] || 0) + sum[y]!;
     const key = `${mkState.divBy}:${g}`;
     const open = !mkState.divOpen.has(key); // all open until closed
     rows += `<tr class="mk-dgroup"><td><button type="button" data-div-toggle="${esc(key)}" aria-expanded="${open}">${open ? "−" : "+"}</button> ${esc(label(g))}</td>${cells(sum)}</tr>`;
     if (open) {
-      for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild">${esc(label(c))}</td>${cells(kids.get(c))}</tr>`;
+      for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
   return `<div class="ov-head">
@@ -763,21 +822,21 @@ function mkDividendsHtml() {
 /* ------------ Page switching and clicks ------------ */
 
 // Side bar badge: number of holdings
-function updateMarketCount() {
+export function updateMarketCount(): void {
   const el = document.querySelector("[data-count='market']");
   if (el) el.textContent = marketData ? String(marketSummary().held.length) : "";
 }
 
-function selectMarket() {
+export function selectMarket(): void {
   showPage("market");
   // The market sheets carry no currency column: amounts are in the default one
   $("currency").hidden = true;
-  activeCurrency = CONFIG.currency;
+  setActiveCurrency(CONFIG.currency);
   setMoneyCurrency(CONFIG.currency);
   renderMarket();
 }
 
-function mkShowHolding(name) {
+function mkShowHolding(name: string): void {
   mkState.holding = name;
   mkState.years = null;
   mkState.orderType = "All";
@@ -785,8 +844,8 @@ function mkShowHolding(name) {
   $("mkHistory").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function setupMarket() {
-  document.querySelectorAll(".side-item[data-page='market']").forEach((b) => {
+export function setupMarket(): void {
+  document.querySelectorAll<HTMLElement>(".side-item[data-page='market']").forEach((b) => {
     b.onclick = () => {
       if (activePage === "market") return;
       selectMarket();
@@ -795,14 +854,15 @@ function setupMarket() {
   });
   const body = $("mkBody");
   body.addEventListener("click", (e) => {
-    const t = e.target.closest("button, tr[data-holding]");
+    const t = (e.target as Element).closest<HTMLElement>("button, tr[data-holding]");
     if (!t) return;
     const d = t.dataset;
     if (d.calYear) {
       mkState.calYear = Number(d.calYear);
       $("mkCalendar").outerHTML = mkCalendar();
     } else if (d.day) {
-      const list = marketData.orders.filter((o) => o.date === d.day);
+      const day = d.day;
+      const list = data().orders.filter((o) => o.date === day);
       $("mkDayInfo").innerHTML = `<b>${esc(mkDate(d.day))}</b>: ${list
         .map((o) => `${esc(o.type)} ${esc(mkQty(o.units))} <button type="button" class="mk-link" data-holding="${esc(o.holding)}">${esc(o.holding)}</button> at ${esc(mkPrice(o.price))} (${esc(money(o.value))})`)
         .join("; ")}`;
@@ -813,7 +873,7 @@ function setupMarket() {
       $("mkBarsCard").innerHTML = mkBarsHtml(s);
       mkLayoutTreemap(s);
     } else if (d.tree) {
-      mkState.treeBy = d.tree;
+      mkState.treeBy = d.tree as "invested" | "current";
       const s = marketSummary();
       $("mkTreeCard").innerHTML = mkTreemapHtml(s);
       mkLayoutTreemap(s);
@@ -825,17 +885,17 @@ function setupMarket() {
       }
       $("mkTableCard").innerHTML = mkTableHtml(marketSummary());
     } else if (d.hyear) {
-      const all = marketData.orders.filter((o) => o.holding === mkState.holding).map((o) => o.date.slice(0, 4));
+      const all = data().orders.filter((o) => o.holding === mkState.holding).map((o) => o.date.slice(0, 4));
       const on = mkState.years ? new Set(mkState.years) : new Set(all);
       if (on.has(d.hyear) && on.size > 1) on.delete(d.hyear);
       else on.add(d.hyear);
       mkState.years = on;
       $("mkHistory").innerHTML = mkHistoryHtml(marketSummary());
     } else if (d.otype) {
-      mkState.orderType = d.otype;
+      mkState.orderType = d.otype as "All" | "Buy" | "Sell";
       $("mkHistory").innerHTML = mkHistoryHtml(marketSummary());
     } else if (d.divBy) {
-      mkState.divBy = d.divBy;
+      mkState.divBy = d.divBy as "month" | "holding";
       $("mkDividends").innerHTML = mkDividendsHtml();
     } else if (d.divToggle) {
       if (mkState.divOpen.has(d.divToggle)) mkState.divOpen.delete(d.divToggle);
@@ -846,14 +906,15 @@ function setupMarket() {
     }
   });
   body.addEventListener("change", (e) => {
-    if (e.target.id === "mkHolding") {
-      mkState.holding = e.target.value;
+    const select = e.target as HTMLSelectElement;
+    if (select.id === "mkHolding") {
+      mkState.holding = select.value;
       mkState.years = null;
       $("mkHistory").innerHTML = mkHistoryHtml(marketSummary());
     }
   });
   // Treemap boxes depend on the width
-  let timer;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   window.addEventListener("resize", () => {
     if (activePage !== "market" || !marketData) return;
     clearTimeout(timer);

@@ -1,5 +1,31 @@
+import { CONFIG } from "./config";
+import { catalog, rows } from "./state";
+import type { Transaction, Totals } from "./types";
+import { createMultiSelect, type MultiSelect, type MultiSelectOptions } from "./multiselect";
+
+export type FilterName = "years" | "months" | "cats" | "modes";
+
+/** What a group can be started with: the items to tick in each menu. */
+export type FilterSelection = Partial<Record<FilterName, string[]>>;
+
+interface FilterGroupOptions {
+  prefix: string;
+  onChange: (name: FilterName) => void;
+  yearValues?: () => string[];
+  yearOptions?: Partial<MultiSelectOptions>;
+  yearOf?: (r: Transaction) => string;
+  fallback?: "all" | "top";
+}
+
+interface FilterGroup extends Record<FilterName, MultiSelect> {
+  items: Record<FilterName, string[]>;
+  init(selection?: FilterSelection): void;
+  checkOnly(name: FilterName, value: string): void;
+  resetOne(name: FilterName): void;
+}
+
 /* =========================================================================
-   filterGroup.js
+   filterGroup.ts
    The four linked filters (Years, Months, Categories, Modes) that every
    section of the page has, plus the filter-bar HTML itself.
 
@@ -16,7 +42,7 @@
    ========================================================================= */
 
 // The four filters: key in the group, name used in element ids, caption
-const FILTER_NAMES = [
+const FILTER_NAMES: { key: FilterName; id: string; label: string }[] = [
   { key: "years", id: "Year", label: "Years" },
   { key: "months", id: "Month", label: "Months" },
   { key: "cats", id: "Cat", label: "Categories" },
@@ -25,12 +51,12 @@ const FILTER_NAMES = [
 
 // One prefix per section: dashboard, monthly comparison, category
 // comparison, calendar, donuts
-const FILTER_PREFIXES = ["dash", "my", "cy", "hm", "dn"];
+export const FILTER_PREFIXES = ["dash", "my", "cy", "hm", "dn"];
 
 /* ------------ Filter bar HTML ------------ */
 
 // Element ids follow one pattern: <prefix><Year|Month|Cat|Mode><Multi|Menu|Toggle|Label>
-function filterBarHtml(prefix, yearLabel) {
+function filterBarHtml(prefix: string, yearLabel: string): string {
   const fields = FILTER_NAMES.map(({ id, label }) => {
     const p = prefix + id;
     const text = id === "Year" ? yearLabel : label;
@@ -45,24 +71,24 @@ function filterBarHtml(prefix, yearLabel) {
 }
 
 // Fill every <div data-filter-bar="prefix" [data-year-label="Year"]>
-function buildFilterBars() {
-  document.querySelectorAll("[data-filter-bar]").forEach((el) => {
+function buildFilterBars(): void {
+  document.querySelectorAll<HTMLElement>("[data-filter-bar]").forEach((el) => {
     el.innerHTML = filterBarHtml(
-      el.dataset.filterBar,
+      el.dataset.filterBar!,
       el.dataset.yearLabel || "Years",
     );
   });
 }
 
 // Ids of the four dropdown containers of one section (for wireMultiToggles)
-const filterMultiIds = (prefix) => FILTER_NAMES.map((f) => `${prefix}${f.id}Multi`);
+export const filterMultiIds = (prefix: string): string[] => FILTER_NAMES.map((f) => `${prefix}${f.id}Multi`);
 
 buildFilterBars();
 
 /* ------------ Ranking ------------ */
 
 // Names of a Map(name -> total), biggest total first (ties: A-Z)
-function sortedByTotal(totals) {
+export function sortedByTotal(totals: Totals): string[] {
   return [...totals]
     .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
     .map((entry) => entry[0]);
@@ -90,24 +116,30 @@ function sortedByTotal(totals) {
   - checkOnly(name, value), resetOne(name) ... like the menu methods, but
                         also rebuild the lists that depend on that menu.
 */
-function createFilterGroup({
+export function createFilterGroup({
   prefix,
   onChange,
   yearValues = () => catalog.years,
   yearOptions = {},
   yearOf = (r) => r.Year,
   fallback = "all",
-}) {
-  const group = { items: { years: [], months: [], cats: [], modes: [] } };
-  const choice = { cats: "all", modes: "all" }; // "all" or a list of names
+}: FilterGroupOptions): FilterGroup {
+  // The four menus are added by init() before anything reads them
+  const group = { items: { years: [], months: [], cats: [], modes: [] } } as unknown as FilterGroup;
+  const choice: Record<"cats" | "modes", "all" | string[]> = { cats: "all", modes: "all" }; // "all" or a list of names
 
-  const idsOf = (name) => {
-    const p = prefix + FILTER_NAMES.find((f) => f.key === name).id;
+  const idsOf = (name: FilterName) => {
+    const p = prefix + FILTER_NAMES.find((f) => f.key === name)!.id;
     return { menuId: p + "Menu", toggleId: p + "Toggle", cls: p + "Check" };
   };
 
   // (Re)build one dropdown. ticked: "all" (starting selection) or a list.
-  function build(name, values, ticked = "all", extra = {}) {
+  function build(
+    name: FilterName,
+    values: string[],
+    ticked: "all" | string[] = "all",
+    extra: Partial<MultiSelectOptions> = {},
+  ): void {
     group.items[name] = values;
     group[name] = createMultiSelect({
       ...idsOf(name),
@@ -119,14 +151,14 @@ function createFilterGroup({
   }
 
   // What a Categories/Modes dropdown has ticked: "all" or the ticked items
-  function ticks(name) {
+  function ticks(name: "cats" | "modes"): "all" | string[] {
     const picked = group[name].values();
     const count = group.items[name].length;
     return count && picked.length === count ? "all" : [...picked];
   }
 
   // What to tick in a rebuilt list, from the remembered choice
-  function pick(name, list) {
+  function pick(name: "cats" | "modes", list: string[]): "all" | string[] {
     const wanted = choice[name];
     if (wanted === "all") return "all";
     if (!wanted.length && fallback !== "top") return []; // user cleared it
@@ -139,7 +171,7 @@ function createFilterGroup({
   function rankedCategories() {
     const years = group.years.set();
     const months = group.months.set();
-    const totals = new Map();
+    const totals: Totals = new Map();
     for (const r of rows) {
       if (years.has(yearOf(r)) && months.has(r.Month)) {
         totals.set(r.Category, (totals.get(r.Category) || 0) + r.Amount);
@@ -153,7 +185,7 @@ function createFilterGroup({
     const years = group.years.set();
     const months = group.months.set();
     const cats = group.cats.set();
-    const totals = new Map();
+    const totals: Totals = new Map();
     for (const r of rows) {
       if (years.has(yearOf(r)) && months.has(r.Month) && cats.has(r.Category)) {
         totals.set(r.Mode, (totals.get(r.Mode) || 0) + r.Amount);
@@ -173,13 +205,13 @@ function createFilterGroup({
   }
 
   // Rebuild the lists that come after the menu `name`
-  function rebuildAfter(name) {
+  function rebuildAfter(name: FilterName): void {
     if (name === "years" || name === "months") rebuildCategories();
     if (name !== "modes") rebuildModes();
   }
 
   // The user changed a dropdown
-  function changed(name) {
+  function changed(name: FilterName): void {
     if (name === "cats" || name === "modes") choice[name] = ticks(name);
     rebuildAfter(name);
     onChange(name);

@@ -7,7 +7,6 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <title>Finance Analytics</title>
-    <link rel="stylesheet" href="styles/main.css" />
   </head>
 
   <body>
@@ -33,7 +32,7 @@
             hidden
           />
         </label>
-        <!-- Filled by settings.js after a workbook is loaded -->
+        <!-- Filled by settings.ts after a workbook is loaded -->
         <div id="currency" class="currency-radios" role="radiogroup" aria-label="Currency" hidden></div>
       </div>
 
@@ -82,7 +81,7 @@
         <!-- ======================================== KPI CARDS ======================================== -->
         <section class="kpis">
 
-          <!-- Labels and values are filled in by dashboard.js (KPI_SETS).
+          <!-- Labels and values are filled in by dashboard.ts (KPI_SETS).
               The two dots on each card flip THAT card between its
               "overall" figure and its "current year/month" figure. -->
           <div class="card kpi">
@@ -116,7 +115,7 @@
         </div>
 
         <div class="dash-stick-zone">
-          <!-- The four dropdowns and Reset are drawn by filterGroup.js -->
+          <!-- The four dropdowns and Reset are drawn by filterGroup.ts -->
           <div class="filters chart-filters sticky-filters" data-filter-bar="dash"></div>
 
         <!-- ====================================== FOUR BAR LISTS ===================================== -->
@@ -323,12 +322,12 @@
 
         <!-- Sticky zone, same idea as the calendar: the filter row stays
             pinned while the donut rows inside this zone scroll past.
-            donuts.js puts every row EXCEPT the last one in #donuts, so the
+            donuts.ts puts every row EXCEPT the last one in #donuts, so the
             filters are released where the last row (#donutsLast) begins. -->
         <div class="donut-stick-zone">
           <div class="filters chart-filters sticky-filters" data-filter-bar="dn"></div>
 
-          <!-- All rows of donuts but the last, drawn by donuts.js -->
+          <!-- All rows of donuts but the last, drawn by donuts.ts -->
           <div id="donuts" class="donuts"></div>
         </div>
         <!-- end of the sticky zone -->
@@ -347,13 +346,13 @@
         </div>
 
         <!-- Sticky zone: the filter row stays pinned to the top of the screen
-            while the months inside this zone scroll past. heatmap.js puts
+            while the months inside this zone scroll past. heatmap.ts puts
             every row of months EXCEPT the last one in #heatmap, so the
             filters are released where the last row (#heatmapLast) begins. -->
         <div class="heat-stick-zone">
           <div class="filters chart-filters sticky-filters" data-filter-bar="hm" data-year-label="Year"></div>
 
-          <!-- The year and all rows of months but the last, drawn by heatmap.js -->
+          <!-- The year and all rows of months but the last, drawn by heatmap.ts -->
           <div id="heatmap" class="heatmap"></div>
         </div>
         <!-- end of the sticky zone -->
@@ -429,7 +428,7 @@
 
     <!-- ======================================== OVERVIEW PAGE ========================================
          Income and Expense combined. Shown instead of the module page and the
-         insights panel. Filled by overview.js. -->
+         insights panel. Filled by overview.ts. -->
     <main class="wrap ov-page" id="overviewPage" hidden>
       <div class="page-head ov-pagehead">
         <div>
@@ -445,7 +444,7 @@
     </main>
 
     <!-- ======================================== MARKET PAGE ========================================
-         Shares, ETFs and mutual funds from the market file. Filled by market.js. -->
+         Shares, ETFs and mutual funds from the market file. Filled by market.ts. -->
     <main class="wrap ov-page" id="marketPage" hidden>
       <div class="page-head">
         <h1 class="page-title">Market</h1>
@@ -456,7 +455,7 @@
 
     <!-- ======================================== INSIGHTS PANEL ========================================
          Right column, stays in place while the page scrolls; its own content
-         scrolls when taller than the screen. Filled by insights.js. -->
+         scrolls when taller than the screen. Filled by insights.ts. -->
     <aside class="rail" aria-label="Insights">
       <div id="insights" class="rail-inner"></div>
     </aside>
@@ -526,30 +525,7 @@
       </div>
     </dialog>
 
-    <!--
-      Scripts are plain (classic) scripts, so this page opens by double-click.
-      ORDER MATTERS: each file may use what the files above it define.
-    -->
-    <script src="src/config.js"></script>
-    <script src="src/utils.js"></script>
-    <script src="src/state.js"></script>
-    <script src="src/modules.js"></script>
-    <script src="src/excel.js"></script>
-    <script src="src/multiselect.js"></script>
-    <script src="src/filterGroup.js"></script>
-    <script src="src/filters.js"></script>
-    <script src="src/dashboard.js"></script>
-    <script src="src/table.js"></script>
-    <script src="src/charts.js"></script>
-    <script src="src/monthlyCompare.js"></script>
-    <script src="src/categoryCompare.js"></script>
-    <script src="src/lineChart.js"></script>
-    <script src="src/heatmap.js"></script>
-    <script src="src/donuts.js"></script>
-    <script src="src/settings.js"></script>
-    <script src="src/insights.js"></script>
-    <script src="src/overview.js"></script>
-    <script src="src/market.js"></script>
-    <script src="src/main.js"></script>
+    <!-- The app is built by Vite from src/main.ts (TypeScript modules). -->
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

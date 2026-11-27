@@ -1,14 +1,22 @@
+import { CONFIG } from "./config";
+import { rebuildAll } from "./rebuild";
+import { MODULES, activeModule, moduleData } from "./modules";
+import { activePage, overviewState, renderOverview } from "./overview";
+import { activeCurrency, allRows, setActiveCurrency, setRows, settings } from "./state";
+import type { SettingsListKey } from "./types";
+import { $, esc, setMoneyCurrency } from "./utils";
+
 /* =========================================================================
-   settings.js
+   settings.ts
    Currency radio buttons in the header and the Settings pop-up.
 
    The settings themselves are read from the "Settings" sheet of the
-   workbook (see parseSettings in excel.js). The pop-up only SHOWS them;
+   workbook (see parseSettings in excel.ts). The pop-up only SHOWS them;
    change them in Excel and load the file again.
    ========================================================================= */
 
 // Lists shown in the pop-up: which list of `settings`, and its heading
-const SETTINGS_SHOWN = [
+const SETTINGS_SHOWN: [SettingsListKey, string][] = [
   ["currencies", "Currency"],
   ["ignoreColumns", "Ignore columns"],
   ["ignoreDates", "Ignore dates"],
@@ -21,15 +29,15 @@ const SETTINGS_SHOWN = [
 
 // Show only the records of one currency, everywhere on the page.
 // The caller redraws (rebuildAll).
-function applyCurrency(code) {
-  activeCurrency = code;
+function applyCurrency(code: string): void {
+  setActiveCurrency(code);
   setMoneyCurrency(code);
-  rows = allRows.filter((r) => r.Currency === code);
+  setRows(allRows.filter((r) => r.Currency === code));
 }
 
 // "JPY" -> "¥": the symbol written for that currency (see CONFIG.currencySymbols);
 // a currency without a symbol is shown by its code
-function currencySymbol(code) {
+export function currencySymbol(code: string): string {
   const symbol = Object.keys(CONFIG.currencySymbols).find(
     (s) => CONFIG.currencySymbols[s] === code,
   );
@@ -39,7 +47,7 @@ function currencySymbol(code) {
 // Fill the radio buttons after a workbook was loaded. The currencies are
 // those of the Settings sheet (first = default); without a Settings sheet,
 // those found in the data.
-function setupCurrency() {
+export function setupCurrency(): void {
   const found = [...new Set(allRows.map((r) => r.Currency))];
   const options = settings.currencies.length ? settings.currencies : found;
   // Keep the currency already shown when this module has it too
@@ -59,10 +67,10 @@ function setupCurrency() {
 /* ------------ Pop-up ------------ */
 
 // "2026-10-17" -> "17-10-2026" (the way dates are written in the workbook)
-const displayDate = (iso) => iso.split("-").reverse().join("-");
+export const displayDate = (iso: string): string => iso.split("-").reverse().join("-");
 
-function openSettingsDialog() {
-  const shown = (key, value) => (key === "ignoreDates" ? displayDate(value) : value);
+function openSettingsDialog(): void {
+  const shown = (key: SettingsListKey, value: string) => (key === "ignoreDates" ? displayDate(value) : value);
 
   const mod = MODULES[activeModule];
   const sheetName = moduleData[activeModule]?.settingsSheetName;
@@ -87,12 +95,12 @@ function openSettingsDialog() {
     return `<div class="settings-col"><b>${title}</b>${list}</div>`;
   }).join("");
 
-  $("settingsDialog").showModal();
+  $<HTMLDialogElement>("settingsDialog").showModal();
 }
 
-function setupSettings() {
+export function setupSettings(): void {
   $("settingsBtn").onclick = openSettingsDialog;
-  const dialog = $("settingsDialog");
+  const dialog = $<HTMLDialogElement>("settingsDialog");
   $("settingsClose").onclick = () => dialog.close();
   // A click on the dark area around the box closes it (Esc also works)
   dialog.onclick = (e) => {
@@ -100,8 +108,9 @@ function setupSettings() {
   };
   // Choosing another currency redraws the whole page
   $("currency").onchange = (e) => {
-    if (e.target.name !== "currency") return;
-    applyCurrency(e.target.value);
+    const input = e.target as HTMLInputElement;
+    if (input.name !== "currency") return;
+    applyCurrency(input.value);
     if (activePage === "overview") {
       overviewState.month = null; // latest month of this currency
       renderOverview();

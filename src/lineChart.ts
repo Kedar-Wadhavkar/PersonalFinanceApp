@@ -1,5 +1,13 @@
+import { labelCanvas } from "./charts";
+import { CONFIG } from "./config";
+import { sortedByTotal } from "./filterGroup";
+import { T } from "./modules";
+import { createMultiSelect } from "./multiselect";
+import { rows } from "./state";
+import { $, NO_DATA_HTML, esc, money, moneyShort, tint } from "./utils";
+
 /* =========================================================================
-   lineChart.js
+   lineChart.ts
    "Spending trend": a stock-style line chart of the spending of one
    category over time, with up to 3 categories to compare.
 
@@ -18,34 +26,53 @@
    Its own controls; they do NOT affect the rest of the page.
    ========================================================================= */
 
-const LINE_RANGES = ["3M", "YTD", "1Y", "3Y", "5Y", "10Y", "Max"];
+type LineRange = "3M" | "YTD" | "1Y" | "3Y" | "5Y" | "10Y" | "Max";
+
+/** The buckets (weeks or months) of one time frame, see lineWindow(). */
+interface LineWindow {
+  mode: "week" | "month";
+  t0: number;
+  t1: number;
+  count: number;
+  clipped: boolean;
+  bucketStart(i: number): number;
+  bucketEnd(i: number): number;
+  indexOf(t: number): number;
+}
+
+const LINE_RANGES: LineRange[] = ["3M", "YTD", "1Y", "3Y", "5Y", "10Y", "Max"];
 const LINE_COLORS = ["#2563eb", "#ea580c", "#7c3aed"]; // blue, orange, purple
 const LINE_MAX_SERIES = 3;
 const DAY_MS = 86400000;
 const WEEK_MS = 7 * DAY_MS;
-const MONTHS_BACK = { "1Y": 12, "3Y": 36, "5Y": 60, "10Y": 120 };
+const MONTHS_BACK: Partial<Record<LineRange, number>> = { "1Y": 12, "3Y": 36, "5Y": 60, "10Y": 120 };
 
 // What the user has chosen. Kept when another workbook / currency is loaded
 // (as far as those categories still exist).
-const lineState = { cats: [], range: "Max", normalize: false, focus: null };
+const lineState: { cats: string[]; range: LineRange; normalize: boolean; focus: string | null } = {
+  cats: [],
+  range: "Max",
+  normalize: false,
+  focus: null,
+};
 
 // All categories of the loaded data, biggest total first
-let lineCategories = [];
+let lineCategories: string[] = [];
 
 /* ------------ Dates ------------ */
 
 // "2026-10-22" -> milliseconds (UTC midnight)
-const isoMs = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+const isoMs = (iso: string): number => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
 
 // Month number counted from year 0: year * 12 + month (0 = January)
-const monthOf = (t) => {
+const monthOf = (t: number): number => {
   const d = new Date(t);
   return d.getUTCFullYear() * 12 + d.getUTCMonth();
 };
-const monthStartMs = (m) => Date.UTC(Math.floor(m / 12), m % 12, 1);
+const monthStartMs = (m: number): number => Date.UTC(Math.floor(m / 12), m % 12, 1);
 
 // "22 Oct"
-const dayText = (t) => {
+const dayText = (t: number): string => {
   const d = new Date(t);
   return `${d.getUTCDate()} ${CONFIG.months[d.getUTCMonth()]}`;
 };
@@ -59,7 +86,7 @@ const dayText = (t) => {
   indexOf(t) }. The period is [t0, t1); bucket i is [bucketStart(i),
   bucketEnd(i)). `clipped`: the data starts later than the time frame asks.
 */
-function lineWindow(range, firstT, lastT) {
+function lineWindow(range: LineRange, firstT: number, lastT: number): LineWindow {
   if (range === "3M") {
     // 13 weeks, counted back from the last date, so every week is complete
     const wanted = lastT - 90 * DAY_MS;
@@ -71,9 +98,9 @@ function lineWindow(range, firstT, lastT) {
       t1,
       count: Math.ceil((t1 - t0) / WEEK_MS),
       clipped: firstT > wanted,
-      bucketStart: (i) => t0 + i * WEEK_MS,
-      bucketEnd: (i) => Math.min(t0 + (i + 1) * WEEK_MS, t1),
-      indexOf: (t) => Math.floor((t - t0) / WEEK_MS),
+      bucketStart: (i: number) => t0 + i * WEEK_MS,
+      bucketEnd: (i: number) => Math.min(t0 + (i + 1) * WEEK_MS, t1),
+      indexOf: (t: number) => Math.floor((t - t0) / WEEK_MS),
     };
   }
 
@@ -92,9 +119,9 @@ function lineWindow(range, firstT, lastT) {
     t1,
     count: endMonth - startMonth + 1,
     clipped: range !== "Max" && firstMonth > wanted,
-    bucketStart: (i) => monthStartMs(startMonth + i),
-    bucketEnd: (i) => monthStartMs(startMonth + i + 1),
-    indexOf: (t) => monthOf(t) - startMonth,
+    bucketStart: (i: number) => monthStartMs(startMonth + i),
+    bucketEnd: (i: number) => monthStartMs(startMonth + i + 1),
+    indexOf: (t: number) => monthOf(t) - startMonth,
   };
 }
 
@@ -103,18 +130,18 @@ function lineWindow(range, firstT, lastT) {
 // A round number at or above v (1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8 or 10 times
 // a power of ten): close to v, so the line fills the chart, and a quarter of it
 // is still a clean number for the grid lines
-function niceMax(v) {
+function niceMax(v: number): number {
   if (!(v > 0)) return 1;
   const power = Math.pow(10, Math.floor(Math.log10(v)));
   const f = v / power;
   const step = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10].find((s) => f <= s + 1e-9);
-  return step * power;
+  return step! * power;
 }
 
 // X axis label candidates: one per month (or per year), centred on the part
 // of it that is inside [t0, t1). Returns [{ t, text }].
-function axisCandidates(t0, t1, byYear) {
-  const out = [];
+function axisCandidates(t0: number, t1: number, byYear: boolean): { t: number; text: string }[] {
+  const out: { t: number; text: string }[] = [];
   if (byYear) {
     const last = new Date(t1 - 1).getUTCFullYear();
     for (let y = new Date(t0).getUTCFullYear(); y <= last; y++) {
@@ -138,10 +165,10 @@ function axisCandidates(t0, t1, byYear) {
 
 // Keep every k-th label (counted from the last one) with the smallest k that
 // leaves no two labels touching. Each label: { x, w } (centre, width in px).
-function thinLabels(labels, gap = 8) {
+function thinLabels<L extends { x: number; w: number }>(labels: L[], gap = 8): L[] {
   for (let k = 1; k <= labels.length; k++) {
     const kept = labels.filter((_, i) => (labels.length - 1 - i) % k === 0);
-    if (kept.every((c, i) => i === 0 || c.x - kept[i - 1].x >= (c.w + kept[i - 1].w) / 2 + gap)) {
+    if (kept.every((c, i) => i === 0 || c.x - kept[i - 1]!.x >= (c.w + kept[i - 1]!.w) / 2 + gap)) {
       return kept;
     }
   }
@@ -150,15 +177,11 @@ function thinLabels(labels, gap = 8) {
 
 /* ------------ Controls ------------ */
 
-// The Categories dropdown (built by setupLineChart): up to 3 categories at a
-// time, listed biggest total first. Ticking a 4th un-ticks the last listed
-// one, which is the one with the smallest total (see multiselect.js).
-let lineCategoryMenu = null;
 
 // Normalize box (only with 2+ lines) and the time frame buttons
-function renderLineControls() {
+function renderLineControls(): void {
   $("lcNormalizeWrap").hidden = lineState.cats.length < 2;
-  $("lcNormalize").checked = lineState.normalize;
+  $<HTMLInputElement>("lcNormalize").checked = lineState.normalize;
   $("lcRanges").innerHTML = LINE_RANGES.map(
     (r) =>
       `<button type="button" class="lc-range" data-range="${r}" aria-pressed="${r === lineState.range}">${r}</button>`,
@@ -166,37 +189,41 @@ function renderLineControls() {
 }
 
 // One-time wiring of the controls (they are redrawn, their container is not)
-function setupLineChartEvents() {
-  $("lcNormalize").onchange = (e) => {
-    lineState.normalize = e.target.checked;
+export function setupLineChartEvents(): void {
+  $<HTMLInputElement>("lcNormalize").onchange = (e) => {
+    lineState.normalize = (e.target as HTMLInputElement).checked;
     renderLineChart();
   };
   $("lcRanges").onclick = (e) => {
-    const button = e.target.closest("[data-range]");
+    const button = (e.target as Element).closest<HTMLElement>("[data-range]");
     if (!button) return;
-    lineState.range = button.dataset.range;
+    lineState.range = button.dataset.range as LineRange;
     renderLineControls();
     renderLineChart();
   };
   // Legend: click a line to keep it (the others go light); click again to undo
   $("lineLegend").onclick = (e) => {
-    const button = e.target.closest("[data-cat]");
+    const button = (e.target as Element).closest<HTMLElement>("[data-cat]");
     if (!button) return;
-    lineState.focus = lineState.focus === button.dataset.cat ? null : button.dataset.cat;
+    const cat = button.dataset.cat!;
+    lineState.focus = lineState.focus === cat ? null : cat;
     renderLineChart();
   };
 }
 
 // After a workbook (or currency) was loaded, and after a reset
-function setupLineChart() {
-  const totals = new Map();
+export function setupLineChart(): void {
+  const totals = new Map<string, number>();
   rows.forEach((r) => totals.set(r.Category, (totals.get(r.Category) || 0) + r.Amount));
   lineCategories = sortedByTotal(totals);
 
   // Starting choice: just the top category (or what the user had chosen, as
   // far as those categories still exist)
   const kept = lineState.cats.filter((c) => totals.has(c)).slice(0, LINE_MAX_SERIES);
-  lineCategoryMenu = createMultiSelect({
+  // The Categories dropdown: up to 3 categories at a time, listed biggest
+  // total first. Ticking a 4th un-ticks the last listed one, which is the one
+  // with the smallest total (see multiselect.ts).
+  const menu = createMultiSelect({
     menuId: "lcCatMenu",
     toggleId: "lcCatToggle",
     cls: "lcCatCheck",
@@ -204,13 +231,13 @@ function setupLineChart() {
     limit: LINE_MAX_SERIES,
     headerLabel: "", // no "Top 3" box; just the x (clear) button
     onChange: () => {
-      lineState.cats = lineCategoryMenu.values();
+      lineState.cats = menu.values();
       renderLineControls();
       renderLineChart();
     },
   });
-  lineCategoryMenu.setValues(kept.length ? kept : lineCategories.slice(0, 1));
-  lineState.cats = lineCategoryMenu.values();
+  menu.setValues(kept.length ? kept : lineCategories.slice(0, 1));
+  lineState.cats = menu.values();
 
   renderLineControls();
   renderLineChart();
@@ -218,7 +245,7 @@ function setupLineChart() {
 
 /* ------------ Drawing ------------ */
 
-function renderLineChart() {
+export function renderLineChart(): void {
   const box = $("lineChart");
   if (!rows.length || !lineState.cats.length) {
     box.innerHTML = NO_DATA_HTML;
@@ -240,13 +267,13 @@ function renderLineChart() {
   const win = lineWindow(lineState.range, firstT, lastT);
 
   // Add up every category per week / month
-  const values = cats.map(() => new Array(win.count).fill(0));
+  const values: number[][] = cats.map(() => new Array<number>(win.count).fill(0));
   for (const r of rows) {
     const s = index.get(r.Category);
     if (s === undefined) continue;
     const t = isoMs(r.Date);
     if (t < win.t0 || t >= win.t1) continue;
-    values[s][win.indexOf(t)] += r.Amount;
+    values[s]![win.indexOf(t)]! += r.Amount;
   }
   const totals = values.map((v) => v.reduce((a, b) => a + b, 0)); // per category, in this period
 
@@ -257,7 +284,7 @@ function renderLineChart() {
   // Scale: money, or - normalized - every line as a share of its own peak
   const normalized = lineState.normalize && cats.length > 1;
   const peaks = values.map((v) => Math.max(...v) || 1);
-  const drawn = normalized ? values.map((v, s) => v.map((x) => x / peaks[s])) : values;
+  const drawn = normalized ? values.map((v, s) => v.map((x) => x / peaks[s]!)) : values;
   const top = normalized ? 1 : niceMax(Math.max(...values.flat()));
   const gridText = [0, 0.25, 0.5, 0.75, 1].map((p) =>
     normalized ? `${p * 100}%` : p ? moneyShort(top * p) : "0",
@@ -273,11 +300,11 @@ function renderLineChart() {
   const plotW = W - plotL - padR;
   const base = H - 36; // y of the zero line
   const plotH = base - padT;
-  const xOf = (t) => plotL + ((t - win.t0) / (win.t1 - win.t0)) * plotW;
-  const yOf = (v) => base - (v / top) * plotH;
+  const xOf = (t: number) => plotL + ((t - win.t0) / (win.t1 - win.t0)) * plotW;
+  const yOf = (v: number) => base - (v / top) * plotH;
 
   // Where each week / month is drawn (its middle)
-  const xs = [];
+  const xs: number[] = [];
   for (let i = 0; i < win.count; i++) xs.push(xOf((win.bucketStart(i) + win.bucketEnd(i)) / 2));
 
   let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="touch-action:pan-y" aria-hidden="true">`;
@@ -309,19 +336,19 @@ function renderLineChart() {
   });
 
   // The kept line (legend click) is drawn last, on top; the others are light
-  const focus = cats.includes(lineState.focus) ? lineState.focus : null;
+  const focus = lineState.focus !== null && cats.includes(lineState.focus) ? lineState.focus : null;
   lineState.focus = focus;
-  const shade = (s) => (focus && cats[s] !== focus ? tint(LINE_COLORS[s], 0.62) : LINE_COLORS[s]);
-  const lineOrder = cats.map((_, s) => s).sort((a, b) => (cats[a] === focus) - (cats[b] === focus));
+  const shade = (s: number): string => (focus && cats[s] !== focus ? tint(LINE_COLORS[s]!, 0.62) : LINE_COLORS[s]!);
+  const lineOrder = cats.map((_, s) => s).sort((a, b) => Number(cats[a] === focus) - Number(cats[b] === focus));
 
   // The lines (a single line also gets a light area under it)
-  const points = (s) => drawn[s].map((v, i) => [xs[i], yOf(v)]);
-  const path = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const points = (s: number) => drawn[s]!.map((v, i): [number, number] => [xs[i]!, yOf(v)]);
+  const path = (pts: [number, number][]) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
   lineOrder.forEach((s) => {
     const pts = points(s);
     const color = shade(s);
     if (cats.length === 1 && pts.length > 1) {
-      svg += `<path d="${path(pts)} L${pts[pts.length - 1][0].toFixed(1)} ${base} L${pts[0][0].toFixed(1)} ${base} Z" fill="${color}" fill-opacity="0.08"/>`;
+      svg += `<path d="${path(pts)} L${pts[pts.length - 1]![0].toFixed(1)} ${base} L${pts[0]![0].toFixed(1)} ${base} Z" fill="${color}" fill-opacity="0.08"/>`;
     }
     const solid = partial && pts.length > 1 ? pts.slice(0, -1) : pts;
     if (solid.length > 1) {
@@ -349,37 +376,40 @@ function renderLineChart() {
   );
 
   // Tooltip: the week / month under the pointer, with every line's amount
-  const bucketText = (i) => {
+  const bucketText = (i: number) => {
     if (win.mode === "week") return `${dayText(win.bucketStart(i))} – ${dayText(win.bucketEnd(i) - DAY_MS)}`;
     const m = monthOf(win.bucketStart(i));
     return `${CONFIG.months[m % 12]} ${Math.floor(m / 12)}${partial && i === win.count - 1 ? " (so far)" : ""}`;
   };
   const hover = $("lcHover");
   const tip = $("lcTip");
-  const svgEl = box.querySelector("svg");
-  const show = (e) => {
+  const svgEl = box.querySelector("svg")!;
+  const show = (e: PointerEvent) => {
     const x = e.clientX - svgEl.getBoundingClientRect().left;
     let best = 0;
     xs.forEach((bx, i) => {
-      if (Math.abs(bx - x) < Math.abs(xs[best] - x)) best = i;
+      if (Math.abs(bx - x) < Math.abs(xs[best]! - x)) best = i;
     });
     hover.style.display = "";
-    hover.firstChild.setAttribute("x1", xs[best]);
-    hover.firstChild.setAttribute("x2", xs[best]);
+    const bx = String(xs[best]);
+    const line = hover.firstChild as SVGLineElement;
+    line.setAttribute("x1", bx);
+    line.setAttribute("x2", bx);
     [...hover.querySelectorAll("circle")].forEach((c, s) => {
-      c.setAttribute("cx", xs[best]);
-      c.setAttribute("cy", yOf(drawn[s][best]));
+      c.setAttribute("cx", bx);
+      c.setAttribute("cy", String(yOf(drawn[s]![best]!)));
     });
     tip.innerHTML =
       `<b>${esc(bucketText(best))}</b>` +
       cats
         .map(
           (c, s) =>
-            `<div><i class="lc-dot" style="background:${LINE_COLORS[s]}"></i>${esc(c)}: ${esc(money(values[s][best]))}${normalized ? ` <span class="small">(${Math.round((values[s][best] / peaks[s]) * 100)}% of peak)</span>` : ""}</div>`,
+            `<div><i class="lc-dot" style="background:${LINE_COLORS[s]}"></i>${esc(c)}: ${esc(money(values[s]![best]))}${normalized ? ` <span class="small">(${Math.round((values[s]![best]! / peaks[s]!) * 100)}% of peak)</span>` : ""}</div>`,
         )
         .join("");
     tip.hidden = false;
-    const left = xs[best] + 12 + tip.offsetWidth > W ? xs[best] - 12 - tip.offsetWidth : xs[best] + 12;
+    const at = xs[best]!;
+    const left = at + 12 + tip.offsetWidth > W ? at - 12 - tip.offsetWidth : at + 12;
     tip.style.left = `${Math.max(0, left)}px`;
     tip.style.top = `${padT}px`;
   };

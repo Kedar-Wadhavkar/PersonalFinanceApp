@@ -1,10 +1,16 @@
+import { clearChart, drawGroupedBars } from "./charts";
+import { CONFIG } from "./config";
+import { createFilterGroup } from "./filterGroup";
+import { catalog, highlight, rows } from "./state";
+import type { GroupedSums } from "./charts";
+
 /* =========================================================================
-   monthlyCompare.js
+   monthlyCompare.ts
    "Month-wise comparison": grouped bars, one group per month, one bar per
    year (up to CONFIG.maxCompareYears years).
 
    Has its own filters that do NOT affect the main dashboard.
-   The chart itself is drawn by charts.js.
+   The chart itself is drawn by charts.ts.
    ========================================================================= */
 
 // The four dropdowns of this section (built by setupMultiYear)
@@ -22,19 +28,19 @@ const monthlyFilters = createFilterGroup({
 });
 
 // Build the four dropdowns from the loaded data, then draw the chart
-function setupMultiYear() {
+export function setupMultiYear(): void {
   monthlyFilters.init();
   renderMultiYear();
 }
 
 // The Reset button of this section
-function resetMultiYear() {
+export function resetMultiYear(): void {
   monthlyFilters.init();
   highlight.monthly = null;
   renderMultiYear();
 }
 
-function renderMultiYear() {
+export function renderMultiYear(): void {
   const selectedYears = monthlyFilters.years.values();
   const selectedMonths = monthlyFilters.months.values();
   const categories = monthlyFilters.cats.set();
@@ -58,10 +64,10 @@ function renderMultiYear() {
   const months = CONFIG.months.filter((m) => selectedMonths.includes(m));
 
   // Total amount for every month/year pair: sums[month][year]
-  const sums = {};
+  const sums: GroupedSums = {};
   months.forEach((m) => {
     sums[m] = {};
-    years.forEach((y) => (sums[m][y] = 0));
+    years.forEach((y) => (sums[m]![y] = 0));
   });
 
   const yearSet = new Set(years);
@@ -73,7 +79,7 @@ function renderMultiYear() {
       categories.has(r.Category) &&
       modes.has(r.Mode)
     ) {
-      sums[r.Month][r.Year] += r.Amount;
+      sums[r.Month]![r.Year]! += r.Amount;
     }
   });
 

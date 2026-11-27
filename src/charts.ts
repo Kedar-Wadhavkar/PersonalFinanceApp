@@ -1,7 +1,39 @@
+import { CONFIG } from "./config";
+import { highlight } from "./state";
+
+/** Which comparison chart: picks its geometry, colours and highlight slot. */
+type ChartKey = "monthly" | "category";
+
+/** sums[group][year] = total amount */
+export type GroupedSums = Record<string, Record<string, number>>;
+
+interface ChartGeometry {
+  minWidth?: number;
+  perGroup?: number;
+  inView?: number;
+  plotHeight: number;
+  gap: number;
+  minBar: number;
+  maxBar: number;
+  minRect: number;
+  labelY: number;
+}
+
+interface GroupedBarsOptions {
+  key: ChartKey;
+  chartId: string;
+  legendId: string;
+  groups: string[];
+  years: string[];
+  sums: GroupedSums;
+  longLabels?: boolean;
+}
+import { $, NO_DATA_HTML, esc, money, moneyShort, smoothPath, tint } from "./utils";
+
 /* ======================================================================
-   charts.js
+   charts.ts
    Draws the grouped bar chart + legend shared by BOTH comparison
-   sections (monthlyCompare.js and categoryCompare.js).
+   sections (monthlyCompare.ts and categoryCompare.ts).
 
    A chart is a set of groups (months or categories); each group has one
    bar per year. Clicking a bar or a legend entry highlights that year.
@@ -11,7 +43,7 @@
    ====================================================================== */
 
 // Pixel sizes of each chart. The two charts differ only in these numbers.
-const CHART_GEOMETRY = {
+const CHART_GEOMETRY: Record<ChartKey, ChartGeometry> = {
   monthly: {
     minWidth: 1050,
     perGroup: 88, // width per month
@@ -42,27 +74,26 @@ const LABEL_LINE = 13;
 // The total under every group label, and the value labels at the grid lines
 const TOTAL_FONT = "bold 10.5px IBM Plex Sans, Arial";
 const TOTAL_GAP = 18; // from the last label line to the total
-const AXIS_FONT = "10px IBM Plex Sans, Arial";
 
 // Full month names for the month-wise chart labels (data keys stay "jan"...)
-const FULL_MONTH_NAMES = {
+const FULL_MONTH_NAMES: Record<string, string> = {
   Jan: "January", Feb: "February", Mar: "March", Apr: "April",
   May: "May", Jun: "June", Jul: "July", Aug: "August",
   Sep: "September", Oct: "October", Nov: "November", Dec: "December",
 };
 
 // One shared canvas, used only to measure label widths
-const labelCanvas = document.createElement("canvas").getContext("2d");
+export const labelCanvas = document.createElement("canvas").getContext("2d")!;
 
 /*
   Split a label into lines that each fit `maxWidth` pixels, so the FULL
   name is shown (no "..."). Lines break between words; a single word that is
   wider than `maxWidth` is broken between letters.
 */
-function wrapLabel(text, maxWidth) {
+function wrapLabel(text: string, maxWidth: number): string[] {
   labelCanvas.font = LABEL_FONT;
-  const fits = (s) => labelCanvas.measureText(s).width <= maxWidth;
-  const lines = [];
+  const fits = (s: string) => labelCanvas.measureText(s).width <= maxWidth;
+  const lines: string[] = [];
   let line = "";
 
   text.split(/\s+/).filter(Boolean).forEach((word) => {
@@ -88,14 +119,14 @@ function wrapLabel(text, maxWidth) {
 }
 
 // Colour of the bar for year number `index`, honouring the highlight
-function yearColor(key, year, index) {
+function yearColor(key: ChartKey, year: string, index: number): string {
   if (highlight[key] && year !== highlight[key]) return CONFIG.mutedColor;
   const palette = CONFIG.yearColors[key]; // each chart has its own colours
-  return palette[Math.min(index, palette.length - 1)];
+  return palette[Math.min(index, palette.length - 1)]!;
 }
 
 // Show the "No data selected" message instead of a chart
-function clearChart(chartId, legendId) {
+export function clearChart(chartId: string, legendId: string): void {
   $(chartId).innerHTML = NO_DATA_HTML;
   $(legendId).innerHTML = "";
 }
@@ -109,7 +140,7 @@ function clearChart(chartId, legendId) {
     sums ...... sums[group][year] = total amount
     longLabels: true = shorten long group names and show the full name on hover
 */
-function drawGroupedBars({
+export function drawGroupedBars({
   key,
   chartId,
   legendId,
@@ -117,21 +148,24 @@ function drawGroupedBars({
   years,
   sums,
   longLabels = false,
-}) {
+}: GroupedBarsOptions): void {
   const g = CHART_GEOMETRY[key];
 
   // A highlighted year that is no longer shown is forgotten
   if (highlight[key] && !years.includes(highlight[key])) highlight[key] = null;
 
-  const max = Math.max(1, ...groups.flatMap((n) => years.map((y) => sums[n][y])));
+  const max = Math.max(1, ...groups.flatMap((n) => years.map((y) => sums[n]![y]!)));
   const n = Math.max(groups.length, 1);
 
   // Total of every group over the years shown
-  const totals = groups.map((name) => years.reduce((s, y) => s + sums[name][y], 0));
+  const totals = groups.map((name) => years.reduce((s, y) => s + sums[name]![y]!, 0));
 
   // What is written under group i: its total, or the highlighted year's value
-  const totalValue = (i) => (highlight[key] ? sums[groups[i]][highlight[key]] : totals[i]);
-  const totalTip = (i) =>
+  const totalValue = (i: number): number => {
+    const year = highlight[key];
+    return year ? sums[groups[i]!]![year]! : totals[i]!;
+  };
+  const totalTip = (i: number) =>
     `${groups[i]} ${highlight[key] || "total"}: ${money(totalValue(i))}`;
 
   // Value labels at the grid lines (0, 25, 50, 75, 100% of the tallest bar).
@@ -144,7 +178,7 @@ function drawGroupedBars({
   const visible = Math.max(0, boxWidth - axisWidth) || 900;
   labelCanvas.font = TOTAL_FONT;
   const widestTotal = Math.max(0, ...totals.map((t) => labelCanvas.measureText(money(t)).width));
-  let width;
+  let width: number;
   if (g.inView) {
     // Up to `inView` groups fill the visible width; more groups keep that
     // group width and the chart scrolls sideways.
@@ -167,8 +201,8 @@ function drawGroupedBars({
   } else {
     // Fill the visible width; below the minimum width (phones) the chart
     // keeps that width and scrolls sideways
-    const perGroup = Math.max(g.perGroup, Math.ceil(widestTotal) + 8);
-    width = Math.max(visible, g.minWidth, groups.length * perGroup);
+    const perGroup = Math.max(g.perGroup ?? 0, Math.ceil(widestTotal) + 8);
+    width = Math.max(visible, g.minWidth ?? 0, groups.length * perGroup);
   }
   const groupWidth = width / n;
 
@@ -204,7 +238,7 @@ function drawGroupedBars({
   svg += `<g class="trend-back" pointer-events="none"></g>`;
 
   // Top of every bar, per year: tops[yearIndex][groupIndex] = [x, y]
-  const tops = years.map(() => []);
+  const tops: [number, number][][] = years.map(() => []);
 
   // One group of bars per name
   groups.forEach((name, gi) => {
@@ -212,15 +246,15 @@ function drawGroupedBars({
     const start = centerX - (years.length * barWidth) / 2;
 
     years.forEach((year, yi) => {
-      const value = sums[name][year];
+      const value = sums[name]![year]!;
       const barHeight = (value / max) * g.plotHeight;
-      tops[yi].push([start + yi * barWidth + 1 + Math.max(g.minRect, barWidth - 2) / 2, base - barHeight]);
+      tops[yi]!.push([start + yi * barWidth + 1 + Math.max(g.minRect, barWidth - 2) / 2, base - barHeight]);
       svg += `<rect class="chart-bar" data-year="${esc(year)}" tabindex="0" role="button" aria-pressed="${highlight[key] === year}" aria-label="${esc(name)} ${esc(year)}: ${money(value)}. Press to highlight this year" x="${start + yi * barWidth + 1}" y="${base - barHeight}" width="${Math.max(g.minRect, barWidth - 2)}" height="${barHeight}" rx="2" fill="${yearColor(key, year, yi)}"><title>${esc(name)} ${esc(year)}: ${money(value)}</title></rect>`;
     });
 
     // Label: one <tspan> per line, first line at the usual label height
     const tooltip = longLabels ? `<title>${esc(name)}</title>` : "";
-    const tspans = labelLines[gi]
+    const tspans = labelLines[gi]!
       .map((line, li) => `<tspan x="${centerX}" dy="${li ? LABEL_LINE : 0}">${esc(line)}</tspan>`)
       .join("");
     svg += `<text x="${centerX}" y="${base + g.labelY}" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, Arial, sans-serif" fill="#475569">${tooltip}${tspans}</text>`;
@@ -257,21 +291,22 @@ function drawGroupedBars({
   // The highlighted year: a curve joining the tops of its bars, in a lighter
   // shade of the bar colour, with a flat light fill of the same colour under it (like the
   // lists at the top of the page). Nothing is drawn when no year is highlighted.
-  const trendBack = chart.querySelector(".trend-back");
-  const trendFront = chart.querySelector(".trend-front");
+  const trendBack = chart.querySelector(".trend-back")!;
+  const trendFront = chart.querySelector(".trend-front")!;
   const drawTrend = () => {
-    const yi = years.indexOf(highlight[key]);
+    const year = highlight[key];
+    const yi = year ? years.indexOf(year) : -1;
     if (yi < 0 || groups.length < 2) {
       trendBack.innerHTML = "";
       trendFront.innerHTML = "";
       return;
     }
-    const pts = tops[yi];
-    const barColor = yearColor(key, highlight[key], yi);
+    const pts = tops[yi]!;
+    const barColor = yearColor(key, year!, yi);
     const lineColor = tint(barColor, 0.5); // a lighter shade of the bar colour
     const curve = smoothPath(pts, 0.12); // only a slight bend
-    const [x0] = pts[0];
-    const [x1] = pts[pts.length - 1];
+    const [x0] = pts[0]!;
+    const [x1] = pts[pts.length - 1]!;
     trendBack.innerHTML = `<path d="${curve} L${x1.toFixed(1)} ${base} L${x0.toFixed(1)} ${base} Z" fill="${barColor}" fill-opacity="0.15"/>`;
     trendFront.innerHTML =
       `<path d="${curve}" fill="none" stroke="${lineColor}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>` +
@@ -284,40 +319,40 @@ function drawGroupedBars({
   // Click a bar or legend entry: highlight that year (click again to undo).
   // Only the colours and the figures under the names change, so they are
   // updated in place - no re-adding of the records, no rebuilding of the chart.
-  const toggleYear = (year) => {
+  const toggleYear = (year: string) => {
     highlight[key] = highlight[key] === year ? null : year;
     // The figures under the names follow: the highlighted year, or the total
-    chart.querySelectorAll(".chart-total").forEach((el) => {
+    chart.querySelectorAll<SVGTextElement>(".chart-total").forEach((el) => {
       const i = Number(el.dataset.i);
-      el.firstChild.textContent = totalTip(i); // the <title> (hover text)
-      el.lastChild.nodeValue = money(totalValue(i));
+      el.firstChild!.textContent = totalTip(i); // the <title> (hover text)
+      el.lastChild!.nodeValue = money(totalValue(i));
     });
     const label = chart.querySelector(".chart-total-label");
     if (label) label.textContent = highlight[key] || "Total";
-    const colorOf = (y) => yearColor(key, y, years.indexOf(y));
-    chart.querySelectorAll(".chart-bar").forEach((bar) => {
-      bar.setAttribute("fill", colorOf(bar.dataset.year));
+    const colorOf = (y: string) => yearColor(key, y, years.indexOf(y));
+    chart.querySelectorAll<SVGRectElement>(".chart-bar").forEach((bar) => {
+      bar.setAttribute("fill", colorOf(bar.dataset.year!));
       bar.setAttribute("aria-pressed", String(highlight[key] === bar.dataset.year));
     });
-    legend.querySelectorAll(".legend-btn").forEach((button) => {
-      button.querySelector(".legend-swatch").style.background = colorOf(button.dataset.year);
+    legend.querySelectorAll<HTMLElement>(".legend-btn").forEach((button) => {
+      button.querySelector<HTMLElement>(".legend-swatch")!.style.background = colorOf(button.dataset.year!);
     });
     drawTrend();
   };
   chart.onclick = (e) => {
-    const bar = e.target.closest(".chart-bar");
-    if (bar) toggleYear(bar.dataset.year);
+    const bar = (e.target as Element).closest<SVGElement>(".chart-bar");
+    if (bar) toggleYear(bar.dataset.year!);
   };
   // Keyboard: Enter or Space on a focused bar does the same as a click
   chart.onkeydown = (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
-    const bar = e.target.closest(".chart-bar");
+    const bar = (e.target as Element).closest<SVGElement>(".chart-bar");
     if (!bar) return;
     e.preventDefault(); // Space must not scroll the page
-    toggleYear(bar.dataset.year);
+    toggleYear(bar.dataset.year!);
   };
   legend.onclick = (e) => {
-    const button = e.target.closest(".legend-btn");
-    if (button) toggleYear(button.dataset.year);
+    const button = (e.target as Element).closest<HTMLElement>(".legend-btn");
+    if (button) toggleYear(button.dataset.year!);
   };
 }
