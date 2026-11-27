@@ -1,0 +1,2987 @@
+/* =========================================================================
+ Expense Analytics — styles
+ Sections:
+  1. Base ............. 2. Header & top bar ..... 3. Form controls
+  4. KPI cards ........ 5. Bar-list cards ..... 6. Transactions table
+  7. Dropdown menus ... 8. Sort menus ......... 9. Comparison charts
+  9a. Share of Expenditure (donuts) ... 9b. Daily spending calendar
+ 10. Responsive (1000px, 800px, 700px, 420px) .. 11. Reduced motion
+========================================================================= */
+
+/* -------- 0. Font: IBM Plex Sans (SIL Open Font License, fonts/IBM_Plex_Sans) -------- */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/IBM_Plex_Sans/static/IBMPlexSans-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/IBM_Plex_Sans/static/IBMPlexSans-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/IBM_Plex_Sans/static/IBMPlexSans-Bold.ttf") format("truetype");
+}
+
+/* -------- 1. Base -------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: "IBM Plex Sans", Arial, "Helvetica Neue", Helvetica, sans-serif;
+  background: #f5f7fb;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.nodata {
+  padding: 40px;
+  text-align: center;
+}
+
+/* -------- 2. Header and top filter bar -------- */
+
+header {
+  background: #101828;
+  color: #fff;
+  padding: 18px 4%;
+}
+
+.head,
+.wrap {
+  width: min(1200px, 100%);
+  margin: auto;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.head .title {
+  font-size: 21px;
+}
+
+.head .small {
+  color: #94a3b8;
+}
+
+/* Currency choice, Settings button and Load Excel, on the right of the header */
+.head-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.head-btn {
+  padding: 9px 11px;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+/* Currency choice: round buttons with the currency symbol (settings.js) */
+.currency-radios {
+  display: flex;
+  gap: 4px;
+}
+
+.cur-opt {
+  position: relative;
+}
+
+.cur-opt input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.cur-opt span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #475569;
+  border-radius: 18px;
+  background: #1e293b;
+  color: #cbd5e1;
+  font-size: 15px;
+}
+
+.cur-opt input:checked + span {
+  background: #fff;
+  border-color: #fff;
+  color: #101828;
+  font-weight: 700;
+}
+
+.cur-opt input:focus-visible + span {
+  outline: 3px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+.currency-radios[hidden] {
+  display: none;
+}
+
+.upload {
+  background: #2563eb;
+  color: white;
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.wrap {
+  padding: 20px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+}
+
+.card-gap {
+  margin-top: 14px;
+}
+
+/* A card inside a main card (the four bar lists and the transactions) */
+.subcard {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 13px;
+  min-width: 0;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+/* One filter: caption above its dropdown button (drawn by filterGroup.js) */
+.field-label {
+  display: block;
+}
+
+/* Filter row under a chart title (comparison sections) */
+.chart-filters {
+  margin-top: 16px;
+}
+
+/* Desktop/tablet: filters on the left, Reset pushed to the far right */
+@media (min-width: 701px) {
+  .filters > button:last-child {
+    margin-left: auto;
+  }
+}
+
+/* -------- 3. Form controls -------- */
+
+input,
+button {
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+button {
+  cursor: pointer;
+}
+
+.upload,
+button {
+  touch-action: manipulation;
+}
+
+.upload:focus-within,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.25);
+  outline-offset: 2px;
+}
+
+/* Search box with a clear (×) button inside its right end */
+.search-box {
+  position: relative;
+  margin: 10px 0 0;
+}
+
+/* Desktop: as wide as the Date + Particular columns (18% + 28% = 46%) */
+@media (min-width: 701px) {
+  .search-box {
+    width: 46%;
+  }
+}
+
+#search {
+  width: 100%;
+  padding-right: 32px;
+}
+
+#search::placeholder {
+  color: #757575;
+  opacity: 1;
+}
+
+.search-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  padding: 2px 6px;
+  color: #757575;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* -------- 4. KPI cards -------- */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+
+  margin: 0 0 14px; /* the space above comes from the pinned block's padding */
+}
+
+.kpi {
+  position: relative; /* anchors the two-dot switch */
+  min-width: 0;
+}
+
+/* Label on one line (cut with "..." if long), leaving room for the dots */
+.kpi-label {
+  display: block;
+  padding-right: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Two-dot switch in the top-right corner of every KPI card.
+   Filled dot = the figure shown: 1st dot = overall, 2nd = current year/month.
+   The button is bigger than the dots so it is easy to hit. */
+.kpi-switch {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  padding: 6px 4px;
+}
+
+.kpi-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid #94a3b8; /* empty dot: outline only */
+  background: transparent;
+}
+
+.kpi-switch[data-side="overall"] .kpi-dot:first-child,
+.kpi-switch[data-side="current"] .kpi-dot:last-child {
+  background: #64748b; /* filled dot */
+  border-color: #64748b;
+}
+
+.kpi-switch:hover .kpi-dot {
+  border-color: #64748b;
+}
+
+.kpi b {
+  display: block;
+  font-size: 24px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* -------- 5. The four bar-list cards -------- */
+
+.graphs4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
+  align-items: stretch;
+}
+
+/* The filter row of the dashboard card stays pinned (see .sticky-filters,
+   9b) while the four bar lists scroll past. The gap under the lists is
+   padding INSIDE the zone, so the filters stay pinned right up to the top of
+   the Transactions card, where they let go. */
+.dash-stick-zone .graphs4 {
+  padding-bottom: 14px;
+}
+
+.graphs4 > .subcard {
+  height: 270px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.graphtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.bars {
+  --cols: 12;
+  --axis: 48px; /* = CONFIG.chartAxisWidth in config.js */
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+  padding-top: 8px;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* No overscroll-behavior here: the mouse wheel over a list scrolls the
+     list if it is longer than the card, and otherwise scrolls the page. */
+  scrollbar-width: none;
+  position: relative;
+}
+
+.bars .nodata {
+  flex: 1;
+}
+
+/* Area under the curve (see drawArea in dashboard.js). Stacking order,
+   bottom to top: fill (0) -> bars (1) -> line + dots (2) -> left axis (3).
+   pointer-events: none lets clicks and hover reach the bars. */
+.bar-area {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.bar-area-back {
+  z-index: 0;
+}
+
+.bar-area-front {
+  z-index: 2;
+}
+
+/* Kept faint so the bars stay the main thing to read */
+.bar-area-fill {
+  fill: rgba(147, 197, 253, 0.18); /* very light blue */
+}
+
+.bar-area-line {
+  fill: none;
+  stroke: rgba(37, 99, 235, 0.4); /* see-through blue */
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.bar-area-dot {
+  fill: #fff;
+  stroke: rgba(37, 99, 235, 0.4);
+  stroke-width: 1.2;
+}
+
+/* One column = one clickable button: bar and name */
+.bars button {
+  flex: 0 0 calc((100% - var(--axis)) / var(--cols));
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 0;
+  padding: 0 0 4px;
+  background: none;
+  border-radius: 0;
+  position: relative;
+  z-index: 1; /* above the area fill, below the curve line */
+}
+
+/* See-through, so the area fill stays visible behind a hovered column */
+.bars button:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+/* Light horizontal lines (0, 25, 50, 75, 100%) behind the bars, drawn by
+   every column and by the empty filler so they run edge-to-edge */
+.col-track,
+.axis-plot {
+  background-image:
+    linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0),
+    linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0),
+    linear-gradient(#e2e8f0, #e2e8f0);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position:
+    0 0,
+    0 25%,
+    0 50%,
+    0 75%,
+    0 100%;
+}
+
+/* Left axis (sticks while the chart scrolls sideways) and the filler after
+   the last column. Same layout as a column, so the lines line up. */
+.axis-col {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+  min-width: 0;
+}
+
+.axis-col::after {
+  content: "";
+  flex: none;
+  height: 14px; /* same as .col-name */
+}
+
+.bars-slant .axis-col::after {
+  height: 62px; /* same as the slanted name band */
+}
+
+.axis-plot {
+  position: relative;
+  flex: 1;
+  margin-bottom: 4px; /* same as .col-track */
+}
+
+.yaxis {
+  position: sticky;
+  left: 0;
+  z-index: 3; /* above bars and curve when the chart scrolls sideways */
+  flex: 0 0 var(--axis);
+}
+
+.yaxis .axis-plot {
+  background: #fff; /* hides columns that scroll under the axis */
+}
+
+.filler {
+  flex: 1 0 0;
+}
+
+.axis-val {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  line-height: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* The bar area: the blue fill grows up from the bottom */
+.col-track {
+  flex: 1;
+  width: 100%;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.col-fill {
+  width: 16px;
+  max-width: 70%;
+  background: #3b82f6;
+  border-radius: 4px 4px 0 0;
+}
+
+.col-name {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Category and Payment mode: names slant at 45 degrees so long names fit.
+   Each name ends under its bar and runs down to the left, inside a band of
+   fixed height. The left axis makes room for the first name. Names longer than the band are cut with
+   "..." (hover shows the full name). */
+.bars-slant .col-name {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: 62px; /* 72px name x sin(45) + its line height + a small gap */
+  overflow: visible;
+}
+
+.bars-slant .col-label {
+  position: absolute;
+  top: 2px;
+  right: 50%;
+  max-width: 72px;
+  font-size: 10px;
+  line-height: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform-origin: 100% 0;
+  transform: rotate(-45deg);
+}
+
+/* -------- 6. Transactions table --------- */
+
+/* The Transactions sub-card: title, search box and the table. It sits after
+   the sticky zone, so the dashboard filters are released where it begins. */
+.tx-sub .scroll {
+  margin-top: 10px;
+}
+
+.scroll {
+  width: 100%;
+  max-height: 310px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Always keep room for the scrollbar so the table width never jumps */
+  scrollbar-gutter: stable;
+  /* The browser must not move the scroll position when rows are swapped */
+  overflow-anchor: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.scroll table {
+  min-width: 760px;
+}
+
+th,
+td {
+  padding: 9px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+/* Every row is one line tall (long text is cut with "..."), because the
+   table only draws the rows in view and needs a fixed row height (table.js) */
+td {
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty rows that stand in for the rows that are not on the page */
+.vspacer td {
+  padding: 0;
+  border: 0;
+}
+
+th {
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortable:hover {
+  background: #eef2f7;
+}
+
+.sorthead {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* Up/down icon at the right of a table heading: two small triangles, the
+   one of the active direction dark */
+.sortarrow {
+  position: relative;
+  flex: none;
+  width: 8px;
+  height: 14px;
+}
+
+.sortarrow::before,
+.sortarrow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.sortarrow::before {
+  top: 1px;
+  border-bottom: 5px solid #cbd5e1;
+}
+
+.sortarrow::after {
+  bottom: 1px;
+  border-top: 5px solid #cbd5e1;
+}
+
+th[data-dir="asc"] .sortarrow::before {
+  border-bottom-color: #475569;
+}
+
+th[data-dir="desc"] .sortarrow::after {
+  border-top-color: #475569;
+}
+
+.sortname {
+  display: inline-block;
+}
+
+/* -------- 7. Multi-select dropdown menus -------- */
+
+.multi {
+  position: relative;
+}
+
+.multi-menu {
+  display: none;
+  position: absolute;
+  z-index: 20;
+  top: 42px;
+  left: 0;
+  min-width: 190px;
+  max-height: 240px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 8px 8px; /* the top space belongs to the sticky first row */
+  box-shadow: 0 10px 25px #0002;
+}
+
+.multi.open .multi-menu {
+  display: block;
+}
+
+.multi-menu label {
+  display: block;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+.multi-menu input {
+  margin-right: 7px;
+}
+
+/* "All" row at the top of a plain menu */
+/* The first row (All / Latest) stays at the top of the menu while the
+   list below it scrolls, so it is always within reach */
+.multi-menu > .ms-header[hidden] + label {
+  padding-top: 14px;
+}
+
+.multi-menu .menu-all,
+.multi-menu .menu-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+
+.multi-menu .menu-all {
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 4px;
+  padding: 14px 4px 8px;
+  font-weight: 600;
+}
+
+/* Header row of a limited menu: "Latest"/"All" box plus a clear button */
+.multi-menu .menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 4px;
+  padding: 12px 4px 8px;
+}
+
+.multi-menu .menu-head label {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  font-weight: 600;
+}
+
+.multi-menu .menu-clear {
+  border: 0;
+  background: transparent;
+  padding: 2px 5px;
+  font-size: 18px;
+  line-height: 1;
+  color: #64748b;
+}
+
+/* -------- 8. Sort menus on the bar-list cards -------- */
+
+.sortwrap {
+  position: relative;
+  margin-left: auto;
+}
+
+.sorticon,
+.clearicon {
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sortmenu {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: 28px;
+  min-width: 155px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 7px;
+  box-shadow: 0 10px 25px #0002;
+}
+
+.sortwrap.open .sortmenu {
+  display: block;
+}
+
+.sortitem {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 7px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.sortitem:hover {
+  background: #f1f5f9;
+}
+
+.sortcheck {
+  display: inline-block;
+  width: 18px;
+  text-align: left;
+}
+
+.sortlabel {
+  display: block;
+}
+
+.sortsep {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 5px 0;
+}
+
+/* -------- 9. Comparison sections and charts -------- */
+
+/* Spending trend (lineChart.js): controls, chart, tooltip and legend */
+.lc-normalize {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  font-size: 12px;
+  color: #475569;
+}
+
+.lc-normalize[hidden] {
+  display: none;
+}
+
+.lc-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto; /* time frames at the far right */
+}
+
+.lc-range {
+  padding: 9px 11px; /* same height as the dropdown and Reset buttons (35px) */
+  border-radius: 16px;
+  color: #475569;
+}
+
+.lc-range[aria-pressed="true"] {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+/* Colour dot in the hover box of the trend chart */
+.lc-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.line-box {
+  position: relative;
+  margin-top: var(--chart-gap-top);
+}
+
+.line-box svg {
+  display: block;
+  max-width: 100%;
+}
+
+.line-tip {
+  position: absolute;
+  z-index: 2;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.15);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.line-tip[hidden] {
+  display: none;
+}
+
+
+
+:root {
+  --chart-gap-top: 18px;
+  --chart-gap-legend: 16px;
+}
+
+/* Chart = value axis on the left (stays in place) + the bars, which scroll
+   sideways inside .chart-scroll (drawn by charts.js) */
+.chart-box {
+  display: flex;
+  margin-top: var(--chart-gap-top);
+}
+
+.chart-axis {
+  flex: none;
+}
+
+.chart-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Keep sideways scrolling inside the chart, but let the mouse wheel
+     (up/down) scroll the page */
+  overscroll-behavior-x: contain;
+}
+
+/* Hide the scrollbar of the scrollable charts in Chrome/Edge/Safari
+   (Firefox uses scrollbar-width: none above). Scrolling still works. */
+.bars::-webkit-scrollbar,
+.chart-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Block, not inline: no text-line gap under the chart */
+.chart-box svg {
+  display: block;
+}
+
+.chart-box .nodata {
+  flex: 1;
+  padding: 50px;
+}
+
+.chart-bar {
+  cursor: pointer;
+}
+
+.chart-bar:focus {
+  outline: none;
+}
+
+.chart-bar:focus-visible {
+  stroke: #2563eb;
+  stroke-width: 2;
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--chart-gap-legend);
+  font-size: 12px;
+}
+
+.legend-btn {
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: #475569;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  margin-right: 5px;
+}
+
+/* Legend of the trend chart: round colour key + name, the total below it */
+.line-legend .legend-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.line-legend .legend-name {
+  display: inline-flex;
+  align-items: center;
+}
+
+.line-legend .legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.line-legend .legend-value {
+  color: #64748b;
+}
+
+/* --------- 9a. Share of Expenditure (four half donuts) --------- */
+
+/* The filter row is sticky like the calendar's (.sticky-filters, 9b) */
+
+/* Rows of donuts. --donut-cols per row: 4, or 2 on phones (section 10);
+   donuts.js reads it to find the last row, centred like the calendar. */
+.donut-row {
+  --donut-cols: 4;
+  --donut-gap: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--donut-gap);
+}
+
+/* Rows above the last row: the gap is padding INSIDE the zone, so the
+   filters stay pinned right up to the top of the last row */
+.donut-stick-zone .donut-row {
+  padding-bottom: var(--donut-gap);
+}
+
+.donut {
+  flex: 0 0
+    calc((100% - (var(--donut-cols) - 1) * var(--donut-gap)) / var(--donut-cols));
+  min-width: 0;
+  border: 1px solid #ede9fe;
+  border-radius: 10px;
+  padding: 10px 10px 14px;
+}
+
+/* Donut name on the left, what is ticked on the right */
+.donut-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.donut-head b {
+  font-size: 13px;
+}
+
+.donut-head .small {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.donut svg {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin: 10px auto 0;
+}
+
+.donut-share {
+  font-size: 19px;
+  font-weight: 700;
+  fill: #0f172a;
+}
+
+.donut-amount {
+  font-size: 11px;
+  fill: #64748b;
+}
+
+/* Small line above the share, shown only for "Nothing selected"; the
+   normal view has none ("Others" is written top right instead) */
+.donut-label {
+  font-size: 10px;
+  fill: #64748b;
+}
+
+/* The two parts are buttons: click (or Enter / Space) to show that part's
+   share and amount in the centre. The active part has the outline. */
+.donut-part {
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+
+.donut-part:hover {
+  filter: brightness(0.94);
+}
+
+.donut-part:focus {
+  outline: none;
+}
+
+.donut-part:focus-visible {
+  stroke: #2563eb;
+  stroke-width: 2;
+}
+
+/* --------- 9b. Daily spending calendar (heat map) --------- */
+
+.heatmap {
+  margin-top: var(--chart-gap-top);
+}
+
+.heatmap .nodata {
+  padding: 50px;
+}
+
+.heat-year {
+  font-weight: 700;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* Rows of month grids. --heat-cols: months per row: 6 on desktop, fewer on
+   smaller screens (section 10); heatmap.js reads it to find the last row.
+   Rows are centred, so a few months (or a half-full last row) sit in the
+   middle. Every month keeps the width it has in a full row. */
+.heat-months {
+  --heat-cols: 6;
+  --heat-gap-x: 18px;
+  --heat-gap-y: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--heat-gap-y) var(--heat-gap-x);
+}
+
+.heat-month {
+  display: flex;
+  flex-direction: column; /* the figures under a month sit at the bottom of the row */
+  flex: 0 0
+    calc((100% - (var(--heat-cols) - 1) * var(--heat-gap-x)) / var(--heat-cols));
+  min-width: 0;
+}
+
+/* Rows above the last row (inside the sticky zone): the gap to the last row
+   is padding INSIDE the zone, so the filters stay pinned right up to the top
+   of the last row. */
+.heat-stick-zone .heat-months {
+  padding-bottom: var(--heat-gap-y);
+}
+
+/* Sticky filter rows (calendar and share of expenditure): pinned to the
+   top of the screen until the last row begins (the end of the zone around
+   them). White band across the whole card (negative side margins == card
+   padding) so scrolled content is hidden behind it.
+   Spacing: 6 + 10 = 16px above (as .chart-filters), 10 + 8 = 18px below
+   (--chart-gap-top, see the zone rule just after). */
+.filters.sticky-filters {
+  --card-pad: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 30; /* above the content; its dropdowns open over it */
+  background: #fff;
+  width: auto; /* not 100% (section 10): it spans the card padding too */
+  margin: 6px calc(-1 * var(--card-pad)) 0;
+  padding: 10px var(--card-pad);
+}
+
+/* While one of its dropdowns is open, the band goes above everything else
+   (other sticky bands, the pinned bar), so the open menu – a bottom sheet
+   on phones – is never covered. */
+.filters.sticky-filters:has(.multi.open) {
+  z-index: 50;
+}
+
+.heat-stick-zone .heatmap,
+.donut-stick-zone .donuts,
+.dash-stick-zone .graphs4 {
+  margin-top: calc(var(--chart-gap-top) - 10px);
+}
+
+/* Figures under a month: total, transactions, no-spend days (kept light) */
+.heat-month-foot {
+  margin-top: auto;
+  padding-top: 6px;
+  text-align: center;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
+.heat-month-total {
+  font-weight: 600;
+}
+
+.heat-month-name {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+/* 7 columns: Sunday on the left, Saturday on the right */
+.heat-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.heat-wd {
+  text-align: center;
+  font-size: 10px;
+  color: #94a3b8;
+  padding-bottom: 2px;
+}
+
+.heat-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1;
+  color: #334155;
+}
+
+/* Day without spending: not clickable */
+.heat-none {
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: default;
+}
+
+/* Days with spending (buttons). The legend swatches use the same classes */
+button.heat-day {
+  cursor: pointer;
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+button.heat-day:hover {
+  outline: 2px solid #475569;
+  outline-offset: -1px;
+}
+
+.heat-l0 { background: #fde0d4; }
+.heat-l1 { background: #fbb69c; }
+.heat-l2 { background: #f78b6c; }
+.heat-l3 { background: #ec5b45; color: #fff; }
+.heat-l4 { background: #c9301f; color: #fff; }
+
+.heat-legend {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--chart-gap-legend);
+}
+
+.heat-legend .small {
+  margin: 0 6px;
+}
+
+.heat-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* Pop-up with the transactions of one day */
+.day-dialog {
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  width: min(640px, calc(100vw - 24px));
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+}
+
+.day-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.day-dialog-box {
+  padding: 16px;
+}
+
+.day-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.day-dialog-close {
+  border: 0;
+  background: transparent;
+  padding: 2px 6px;
+  font-size: 22px;
+  line-height: 1;
+  color: #94a3b8;
+}
+
+.day-dialog-close:hover {
+  color: #475569;
+}
+
+.day-dialog-body {
+  max-height: min(60vh, 420px);
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.day-dialog-body th {
+  z-index: 1;
+}
+
+/* Information (not an error), e.g. rows skipped while loading */
+.notice {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+/* Settings pop-up: one column per list */
+.settings-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  max-height: min(60vh, 420px);
+  overflow: auto;
+}
+
+.settings-col b {
+  font-size: 13px;
+}
+
+.settings-col ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.settings-col .small {
+  margin-top: 6px;
+}
+
+.error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+/* -------- 10. Responsive -------- */
+
+@media (max-width: 1000px) {
+  .heat-months {
+    --heat-cols: 4;
+  }
+
+  .wrap {
+    padding: 16px;
+  }
+
+  .filters {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .heat-months {
+    --heat-cols: 3;
+  }
+
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graphs4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Phone */
+@media (max-width: 700px) {
+  .heat-months {
+    --heat-gap-x: 12px;
+    --heat-gap-y: 16px;
+  }
+
+  /* Cards have 13px padding on phones: the sticky band still spans them */
+  .filters.sticky-filters {
+    --card-pad: 13px;
+  }
+
+  /* Share of Expenditure: 2 x 2 on phones */
+  .donut-row {
+    --donut-cols: 2;
+    --donut-gap: 12px;
+  }
+
+  header {
+    padding: 14px max(14px, env(safe-area-inset-right)) 14px
+      max(14px, env(safe-area-inset-left));
+  }
+
+  .head {
+    gap: 12px;
+  }
+
+  .head > div {
+    min-width: 0;
+  }
+
+  .head .title {
+    font-size: 18px;
+  }
+
+  .head .small {
+    white-space: normal;
+  }
+
+  .upload {
+    white-space: nowrap;
+    padding: 10px 12px;
+  }
+
+  .wrap {
+    padding: 12px max(12px, env(safe-area-inset-right))
+      calc(18px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .card {
+    padding: 13px;
+    border-radius: 10px;
+  }
+
+  .subcard {
+    padding: 11px;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .filters > .field,
+  .filters > button {
+    min-width: 0;
+  }
+
+  .lc-normalize,
+  .lc-ranges {
+    grid-column: 1 / -1;
+  }
+
+  .lc-ranges {
+    margin-left: 0;
+  }
+
+  .lc-range {
+    min-height: 40px; /* like the other controls on phones */
+  }
+
+  .filters .field > .multi,
+  .filters .multi > button {
+    width: 100%;
+  }
+
+  /* Every control in the filter grid has the same height (40px: easy to
+    tap): the four dropdown buttons and Reset */
+  .filters .multi > button,
+  .filters > button {
+    min-height: 40px;
+  }
+
+  /* Reset sits in the RIGHT column, under Modes (the left cell stays
+    empty), so it lines up with the dropdowns above it */
+  .filters > button {
+    grid-column: 2;
+    align-self: end;
+  }
+
+  /* Dropdown and sort menus become bottom sheets on phones */
+  .multi-menu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    max-height: min(62vh, 420px);
+    min-width: 0;
+    border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.25);
+  }
+
+  .multi-menu label {
+    padding: 9px 6px;
+    font-size: 12px;
+  }
+
+  .sortmenu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    min-width: 0;
+    z-index: 50;
+  }
+
+  .sortitem {
+    min-height: 44px;
+    font-size: 12px;
+  }
+
+  .kpis {
+    gap: 9px;
+  }
+
+  .kpi b {
+    font-size: 20px;
+  }
+
+  .graphs4 {
+    gap: 12px;
+  }
+
+  .col-name{
+    font-size: 10px;
+  }
+
+  .scroll {
+    max-height: 360px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+
+  .scroll table {
+    min-width: 720px;
+  }
+
+  .scroll th,
+  .scroll td {
+    padding: 10px 9px;
+  }
+
+  .scroll th {
+    z-index: 2;
+  }
+
+  .sorthead {
+    gap: 4px;
+  }
+
+  #search {
+    min-height: 42px;
+  }
+
+  #multiYearChart,
+  #categoryYearChart {
+    margin-left: -5px;
+    margin-right: -5px;
+  }
+
+  .small {
+    line-height: 1.4;
+  }
+}
+
+/* Small phone */
+@media (max-width: 420px) {
+  .heat-months {
+    --heat-cols: 2;
+  }
+
+  .kpi {
+    padding: 11px;
+  }
+
+  .kpi b {
+    font-size: 18px;
+  }
+
+  .head .small {
+    display: none;
+  }
+
+  .upload {
+    font-size: 13px;
+  }
+}
+
+/* Go-to-top button, bottom right of the page (shown after scrolling down) */
+.to-top {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 60; /* above the pinned filter rows */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.3);
+}
+
+.to-top[hidden] {
+  display: none;
+}
+
+/* Phones: an open dropdown is a bottom sheet; do not cover it */
+body:has(.multi.open) .to-top,
+body:has(.sortwrap.open) .to-top {
+  display: none;
+}
+
+/* -------- 11. Reduced motion -------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* =========================================================================
+ 12. App layout: side navigation + page
+ The bar stays in place while the page scrolls (sticky, full screen
+ height). Its top (title, Load Excel, currency) and bottom (Settings) are
+ fixed; only the middle list scrolls, on its own (overscroll-behavior:
+ contain stops the page from scrolling when the list reaches its end).
+========================================================================= */
+
+.app {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr) 300px;
+  align-items: start;
+  min-height: 100vh;
+}
+
+.app > main.wrap {
+  min-width: 0;
+  width: 100%;
+}
+
+.side {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  grid-row: 1 / span 2;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-right: 1px solid #dbe2ea;
+}
+
+.side-top {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.side-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.side-title {
+  font-size: 19px;
+  color: #101828;
+}
+
+#fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side .upload {
+  display: block;
+  text-align: center;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.side-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.side-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.side-label {
+  padding: 0 10px 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.side-item:hover {
+  background: #f1f5f9;
+}
+
+.side-item:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.5);
+  outline-offset: -3px;
+}
+
+.side-item.active {
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.side-item:disabled {
+  color: #94a3b8;
+  cursor: default;
+}
+
+.side-item:disabled:hover {
+  background: transparent;
+}
+
+.side-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.side-dot-plain {
+  background: #cbd5e1;
+}
+
+.side-badge {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.side-bottom {
+  padding: 10px 12px 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.side-settings {
+  min-height: 44px;
+}
+
+/* Currency: round buttons with the symbol, light version for the bar */
+.side .currency-radios {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.side .cur-opt span {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.side .cur-opt input:checked + span {
+  background: #101828;
+  border-color: #101828;
+  color: #fff;
+}
+
+/* Page title above the KPI cards */
+.page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #101828;
+}
+
+/* Section jumps land a little below the top edge */
+main section[id] {
+  scroll-margin-top: 12px;
+}
+
+/* Tablet and phone: the bar becomes a band across the top that scrolls
+   away with the page; modules and sections scroll sideways */
+@media (max-width: 800px) {
+  .app {
+    display: block;
+  }
+
+  .side {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #dbe2ea;
+  }
+
+  .side-top {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px max(14px, env(safe-area-inset-left));
+  }
+
+  .side-brand {
+    flex: 1 1 100%;
+  }
+
+  .side-scroll {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 12px;
+    gap: 4px;
+  }
+
+  .side-group {
+    flex-direction: row;
+  }
+
+  .side-label,
+  .side-onpage,
+  .side-item:disabled {
+    display: none;
+  }
+
+  .side-item {
+    width: auto;
+  }
+
+  /* Settings stays reachable: a button under the module row */
+  .side-bottom {
+    padding: 0 12px 8px;
+    border-top: 0;
+  }
+
+  .side-settings {
+    width: auto;
+  }
+}
+
+/* =========================================================================
+ 13. Insights panel (right column, insights.js)
+ Like the side bar: stays in place while the page scrolls; scrolls on
+ its own when taller than the screen.
+========================================================================= */
+
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  background: #fff;
+  border-left: 1px solid #dbe2ea;
+}
+
+.rail-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 16px 24px;
+}
+
+.rail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.rail-card:first-child {
+  padding-top: 0;
+}
+
+.rail-card:last-child {
+  border-bottom: 0;
+}
+
+.rail-label {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rail-sub {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.rail-big {
+  font-size: 28px;
+  color: #101828;
+}
+
+.rail-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rail-pair > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.rail-pair span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.rail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rail-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-change {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rail-diff {
+  color: #64748b;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.rail-move {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rail-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #eef2f6;
+  overflow: hidden;
+}
+
+.rail-track > div {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.rail-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-entry:hover {
+  background: #f1f5f9;
+}
+
+.rail-entry:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.5);
+  outline-offset: -3px;
+}
+
+.rail-entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rail-entry-text > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-income {
+  color: #1e40af;
+}
+
+.rail-split {
+  height: 10px;
+  border-radius: 5px;
+  background: #dbeafe;
+  overflow: hidden;
+}
+
+.rail-split > div {
+  height: 100%;
+  background: #f59e0b;
+}
+
+.rail-later {
+  opacity: 0.75;
+}
+
+/* Under 1300px: the panel moves above the charts, as a row of cards that
+   scrolls sideways */
+@media (max-width: 1300px) {
+  .app {
+    grid-template-columns: 248px minmax(0, 1fr);
+  }
+
+  .rail {
+    grid-column: 2;
+    grid-row: 1;
+    position: static;
+    height: auto;
+    overflow: visible;
+    border-left: 0;
+    border-bottom: 1px solid #dbe2ea;
+  }
+
+  .app > main.wrap {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .rail-inner {
+    flex-direction: row;
+    gap: 14px;
+    overflow-x: auto;
+    padding: 14px 16px;
+  }
+
+  .rail-card {
+    flex: 0 0 260px;
+    padding: 0 14px 0 0;
+    border-bottom: 0;
+    border-right: 1px solid #e2e8f0;
+  }
+
+  .rail-card:last-child {
+    border-right: 0;
+  }
+}
+
+/* Phone: one column; the panel's cards sit between the bar and the page */
+@media (max-width: 800px) {
+  .app {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rail {
+    order: 1;
+  }
+
+  .app > main.wrap {
+    order: 2;
+  }
+}
+
+/* =========================================================================
+ 14. Overview page (overview.js)
+ Income and Expense combined. Takes the page column AND the insights
+ panel's column; the module page, the panel and "On this page" are hidden.
+========================================================================= */
+
+.app.is-wide .rail,
+.app.is-wide .side-onpage {
+  display: none;
+}
+
+.app.is-wide > main.ov-page {
+  grid-column: 2 / -1;
+  grid-row: 1 / span 2;
+}
+
+main.wrap[hidden] {
+  display: none;
+}
+
+.ov-pagehead {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Month / Year switch */
+.ov-period {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
+.ov-period button {
+  border: 0;
+  background: transparent;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+}
+
+.ov-period button.on {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+
+.ov-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+.ov-pos {
+  color: #0f766e;
+}
+
+.ov-neg {
+  color: #b45309;
+}
+
+.ov-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ov-key {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.ov-sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+/* Monthly bars: each month is a button */
+.ov-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.ov-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(56px, 1fr);
+  gap: 6px;
+}
+
+.ov-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ov-month:hover {
+  background: #f8fafc;
+}
+
+.ov-month.on {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+}
+
+.ov-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 160px;
+}
+
+.ov-bar {
+  width: 14px;
+  min-height: 1px;
+  border-radius: 3px 3px 0 0;
+}
+
+.ov-inc {
+  background: #2563eb;
+}
+
+.ov-exp {
+  background: #f59e0b;
+}
+
+.ov-mlabel {
+  font-size: 12px;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.ov-net {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Two cards side by side */
+.ov-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ov-grid2 > .card {
+  min-width: 0;
+}
+
+.ov-big {
+  display: block;
+  font-size: 26px;
+  margin: 10px 0 6px;
+}
+
+.ov-cum {
+  display: block;
+  width: 100%;
+  height: 190px;
+}
+
+.ov-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* Where income went */
+.ov-split {
+  display: flex;
+  height: 26px;
+  margin: 14px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.ov-split span {
+  height: 100%;
+}
+
+.ov-legend {
+  display: grid;
+  gap: 6px;
+}
+
+.ov-leg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.ov-leg-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-saved b {
+  color: #0f766e;
+}
+
+/* Expense cover */
+.ov-cover {
+  display: block;
+  font-size: 30px;
+  margin: 10px 0;
+}
+
+.ov-cover span {
+  font-size: 16px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.ov-blocks {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.ov-block {
+  height: 18px;
+  border-radius: 3px;
+  background: #f1f5f9;
+}
+
+.ov-block.target {
+  background: #e2e8f0;
+  outline: 1px dashed #94a3b8;
+  outline-offset: -1px;
+}
+
+.ov-block.full {
+  background: #0f766e;
+}
+
+.ov-block.part {
+  background: #5eead4;
+}
+
+/* Insights */
+.ov-notes {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ov-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.ov-tag {
+  flex: 0 0 auto;
+  min-width: 78px;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ov-tag-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ov-tag-good {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.ov-tag-info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+@media (max-width: 1300px) {
+  .app.is-wide > main.ov-page {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
+
+@media (max-width: 1000px) {
+  .ov-grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .app.is-wide > main.ov-page {
+    order: 2;
+  }
+
+  .ov-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Overview cards (own class: dashboard.js walks every .kpi) */
+.ov-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.ov-kpi {
+  min-width: 0;
+}
+
+.ov-kpi-label {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ov-kpi b {
+  display: block;
+  font-size: 24px;
+  margin: 8px 0 4px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .ov-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* =========================================================================
+ 15. Market page (market.js)
+========================================================================= */
+
+.mk-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 0 0 6px;
+}
+
+.mk-foot {
+  margin: 0 0 14px;
+}
+
+.mk-pos {
+  color: #0f766e;
+}
+
+.mk-neg {
+  color: #b45309;
+}
+
+/* Year buttons may be many: let them wrap */
+.mk-years {
+  flex-wrap: wrap;
+}
+
+/* Investment calendar: 12 small months */
+.mk-cal {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 18px 22px;
+  margin-top: 14px;
+}
+
+.mk-mhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.mk-mhead span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.mk-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.mk-day {
+  display: inline-block;
+  aspect-ratio: 1;
+  min-width: 12px;
+  border: 0;
+  border-radius: 3px;
+  padding: 0;
+  background: #f1f5f9;
+}
+
+.mk-grid .mk-blank {
+  background: transparent;
+}
+
+button.mk-day {
+  cursor: pointer;
+}
+
+button.mk-day:hover,
+button.mk-day:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 1px;
+}
+
+.mk-l1 {
+  background: #bfdbfe;
+}
+
+.mk-l2 {
+  background: #93c5fd;
+}
+
+.mk-l3 {
+  background: #a5b4fc;
+}
+
+.mk-l4 {
+  background: #7c3aed;
+}
+
+.mk-day.mk-sell {
+  box-shadow: inset 0 0 0 2px #dc2626;
+}
+
+.mk-cal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.mk-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mk-legend .mk-day {
+  width: 14px;
+  min-width: 14px;
+}
+
+.mk-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Category chips */
+.mk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+
+.mk-chip {
+  border: 1px solid #dbe2ea;
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.mk-chip.on {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+/* Treemap */
+.mk-tree {
+  position: relative;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.mk-tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 3px;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.mk-tile:hover,
+.mk-tile:focus-visible {
+  opacity: 1 !important;
+  outline: 2px solid #0f172a;
+  outline-offset: -2px;
+}
+
+.mk-tile-name {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.mk-tile-val {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* Invested vs current bars */
+.mk-cols {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(34px, 1fr);
+  gap: 4px;
+  min-width: max-content;
+}
+
+.mk-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 4px 0;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.mk-col:hover {
+  background: #f8fafc;
+}
+
+.mk-colbars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 260px;
+}
+
+.mk-bar {
+  width: 11px;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+}
+
+.mk-b-inv {
+  background: #93c5fd;
+}
+
+.mk-b-cur {
+  background: #2563eb;
+}
+
+.mk-b-cur.down {
+  background: #f59e0b;
+}
+
+.mk-collabel {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 12px;
+  color: #475569;
+  max-height: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tables */
+.mk-tablewrap {
+  overflow: auto;
+  margin-top: 12px;
+}
+
+.mk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.mk-table th,
+.mk-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eef2f6;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.mk-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  font-weight: 500;
+  color: #475569;
+  font-size: 13px;
+}
+
+.mk-table th button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mk-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-table tbody tr[data-holding] {
+  cursor: pointer;
+}
+
+.mk-table tbody tr[data-holding]:hover {
+  background: #f8fafc;
+}
+
+.mk-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #dbe2ea;
+}
+
+#mkTableCard .mk-tablewrap {
+  max-height: 560px;
+}
+
+/* Buy history */
+.mk-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mk-select select {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  background: #fff;
+  min-width: 200px;
+}
+
+.mk-hfilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+
+.mk-hist {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.mk-htable {
+  max-height: 460px;
+}
+
+.mk-h-total td {
+  font-weight: 700;
+  background: #fef9c3;
+}
+
+.mk-h-year td {
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.mk-dear {
+  color: #dc2626;
+}
+
+.mk-cheap {
+  color: #16a34a;
+}
+
+.mk-selltag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.mk-hkey {
+  margin-top: 12px;
+}
+
+.mk-hsvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mk-axis {
+  font-size: 11px;
+  fill: #64748b;
+  font-family: "IBM Plex Sans", Arial, sans-serif;
+}
+
+/* Dividends */
+.mk-dgroup td {
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.mk-dgroup button {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mk-dchild {
+  padding-left: 40px !important;
+}
+
+@media (max-width: 1300px) {
+  .mk-cal {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .mk-hist {
+    grid-template-columns: 1fr;
+  }
+
+  .mk-cal {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .mk-cal {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .app.is-wide > main.ov-page {
+    order: 2;
+  }
+
+  .mk-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mk-select select {
+    min-width: 0;
+    max-width: 60vw;
+  }
+}

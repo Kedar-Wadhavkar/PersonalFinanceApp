@@ -1,0 +1,555 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Finance Analytics</title>
+    <link rel="stylesheet" href="styles/main.css" />
+  </head>
+
+  <body>
+    <div class="app">
+    <!-- ======================================== SIDE NAVIGATION ========================================
+         Stays in place while the page scrolls (position: sticky). The top
+         (title, Load Excel, currency) and the bottom (Settings) are fixed;
+         only the middle list scrolls, on its own, when the pointer is over it. -->
+    <nav class="side" aria-label="Finance modules">
+      <div class="side-top">
+        <div class="side-brand">
+          <b class="side-title">Finance Analytics</b>
+          <div class="small" id="fileName">No workbook loaded</div>
+        </div>
+        <label class="upload">
+          <span id="uploadText">Load Excel</span>
+          <input
+            id="file"
+            aria-label="Choose Excel workbooks (the finance workbook and/or the market file)"
+            type="file"
+            accept=".xlsx"
+            multiple
+            hidden
+          />
+        </label>
+        <!-- Filled by settings.js after a workbook is loaded -->
+        <div id="currency" class="currency-radios" role="radiogroup" aria-label="Currency" hidden></div>
+      </div>
+
+      <div class="side-scroll">
+        <div class="side-group">
+          <span class="side-label">Analytics</span>
+          <button type="button" class="side-item" data-page="overview"><span class="side-dot" style="background:#0f766e"></span><span class="side-name">Overview</span></button>
+        </div>
+        <div class="side-group">
+          <span class="side-label">Modules</span>
+          <button type="button" class="side-item" data-module="expense"><span class="side-dot" style="background:#f59e0b"></span><span class="side-name">Expense</span><span class="side-badge" data-count="expense"></span></button>
+          <button type="button" class="side-item" data-module="income"><span class="side-dot" style="background:#2563eb"></span><span class="side-name">Income</span><span class="side-badge" data-count="income"></span></button>
+          <button type="button" class="side-item" data-page="market"><span class="side-dot" style="background:#7c3aed"></span><span class="side-name">Market</span><span class="side-badge" data-count="market"></span></button>
+          <button type="button" class="side-item" disabled><span class="side-dot" style="background:#0f766e"></span><span class="side-name">Net worth</span><span class="side-badge">soon</span></button>
+          <button type="button" class="side-item" disabled><span class="side-dot" style="background:#be123c"></span><span class="side-name">Loans</span><span class="side-badge">soon</span></button>
+          <button type="button" class="side-item" disabled><span class="side-dot" style="background:#475569"></span><span class="side-name">Budgets &amp; goals</span><span class="side-badge">soon</span></button>
+        </div>
+        <div class="side-group side-onpage">
+          <span class="side-label">On this page</span>
+          <a class="side-item" href="#secBreakdown"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="{Flow} breakdown">Spending breakdown</span></a>
+          <a class="side-item" href="#secTx"><span class="side-dot side-dot-plain"></span><span class="side-name">Transactions</span></a>
+          <a class="side-item" href="#secShare"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="Share of {Share}">Share of Expenditure</span></a>
+          <a class="side-item" href="#secCalendar"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="Daily {flow} calendar">Daily spending calendar</span></a>
+          <a class="side-item" href="#secTrend"><span class="side-dot side-dot-plain"></span><span class="side-name" data-t="{Flow} trend">Spending trend</span></a>
+          <a class="side-item" href="#secMonthly"><span class="side-dot side-dot-plain"></span><span class="side-name">Month-wise comparison</span></a>
+          <a class="side-item" href="#secCategory"><span class="side-dot side-dot-plain"></span><span class="side-name">Category-wise comparison</span></a>
+        </div>
+      </div>
+
+      <div class="side-bottom">
+        <button id="settingsBtn" class="side-item side-settings" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+          <span class="side-name">Settings</span>
+        </button>
+      </div>
+    </nav>
+
+    <main class="wrap" id="modulePage">
+      <!-- Error messages from loading the workbook appear here -->
+      <div class="page-head">
+        <h1 id="pageTitle" class="page-title">Expense</h1>
+        <div class="small" id="pageSub">Interactive analysis from yearly Excel tables</div>
+      </div>
+      <div id="err"></div>
+
+        <!-- ======================================== KPI CARDS ======================================== -->
+        <section class="kpis">
+
+          <!-- Labels and values are filled in by dashboard.js (KPI_SETS).
+              The two dots on each card flip THAT card between its
+              "overall" figure and its "current year/month" figure. -->
+          <div class="card kpi">
+            <button class="kpi-switch" type="button"><span class="kpi-dot"></span><span class="kpi-dot"></span></button>
+            <span class="small kpi-label"></span><b class="kpi-value"></b>
+          </div>
+          <div class="card kpi">
+            <button class="kpi-switch" type="button"><span class="kpi-dot"></span><span class="kpi-dot"></span></button>
+            <span class="small kpi-label"></span><b class="kpi-value"></b>
+          </div>
+          <div class="card kpi">
+            <button class="kpi-switch" type="button"><span class="kpi-dot"></span><span class="kpi-dot"></span></button>
+            <span class="small kpi-label"></span><b class="kpi-value"></b>
+          </div>
+          <div class="card kpi">
+            <button class="kpi-switch" type="button"><span class="kpi-dot"></span><span class="kpi-dot"></span></button>
+            <span class="small kpi-label"></span><b class="kpi-value"></b>
+          </div>
+        </section>
+
+
+      <!-- ======================================== DASHBOARD CARD ======================================== -->
+      <!-- One main card holding the filters and four sub-cards (Year, Month,
+           Category, Payment mode) plus a Transactions sub-card, like the
+           Share of Expenditure card. The sticky zone ends after the four
+           lists, so the pinned filter row lets go where Transactions begins. -->
+      <section class="card" id="secBreakdown">
+        <div>
+          <div class="graphtitle"><b data-t="{Flow} breakdown">Spending breakdown</b></div>
+          <div class="small">Filters apply to every card below</div>
+        </div>
+
+        <div class="dash-stick-zone">
+          <!-- The four dropdowns and Reset are drawn by filterGroup.js -->
+          <div class="filters chart-filters sticky-filters" data-filter-bar="dash"></div>
+
+        <!-- ====================================== FOUR BAR LISTS ===================================== -->
+        <section class="graphs4">
+          <!-- Year comparison -->
+          <div class="subcard">
+            <div class="graphtitle">
+              <b>Year</b>
+              <div class="sortwrap" data-sort="year">
+                <button
+                  class="sorticon"
+                  type="button"
+                  title="Sort"
+                  aria-label="Sort"
+                >
+                  ⇅
+                </button>
+                <div class="sortmenu"></div>
+              </div>
+              <button
+                class="clearicon"
+                type="button"
+                title="Reset year filter"
+                aria-label="Reset year filter"
+                data-reset="years"
+              >
+                ×
+              </button>
+            </div>
+            <div class="small">Click a year to isolate it</div>
+            <div id="yearbars" class="bars"></div>
+          </div>
+
+          <!-- Monthly expense -->
+          <div class="subcard">
+            <div class="graphtitle">
+              <b>Month</b>
+              <div class="sortwrap" data-sort="month">
+                <button
+                  class="sorticon"
+                  type="button"
+                  title="Sort"
+                  aria-label="Sort"
+                >
+                  ⇅
+                </button>
+                <div class="sortmenu"></div>
+              </div>
+              <button
+                class="clearicon"
+                type="button"
+                title="Reset month filter"
+                aria-label="Reset month filter"
+                data-reset="months"
+              >
+                ×
+              </button>
+            </div>
+            <div class="small">Click a month to isolate it</div>
+            <div id="months" class="bars"></div>
+          </div>
+
+          <!-- By category -->
+          <div class="subcard">
+            <div class="graphtitle">
+              <b>Category</b>
+              <div class="sortwrap" data-sort="category">
+                <button
+                  class="sorticon"
+                  type="button"
+                  title="Sort"
+                  aria-label="Sort"
+                >
+                  ⇅
+                </button>
+                <div class="sortmenu"></div>
+              </div>
+              <button
+                class="clearicon"
+                type="button"
+                title="Reset category filter"
+                aria-label="Reset category filter"
+                data-reset="cats"
+              >
+                ×
+              </button>
+            </div>
+            <div class="small">Click a category to isolate it</div>
+            <div id="catbars" class="bars bars-slant"></div>
+          </div>
+
+          <!-- By payment mode -->
+          <div class="subcard">
+            <div class="graphtitle">
+              <b>Payment mode</b>
+              <div class="sortwrap" data-sort="mode">
+                <button
+                  class="sorticon"
+                  type="button"
+                  title="Sort"
+                  aria-label="Sort"
+                >
+                  ⇅
+                </button>
+                <div class="sortmenu"></div>
+              </div>
+              <button
+                class="clearicon"
+                type="button"
+                title="Reset mode filter"
+                aria-label="Reset mode filter"
+                data-reset="modes"
+              >
+                ×
+              </button>
+            </div>
+            <div class="small">Click a mode to isolate it</div>
+            <div id="modebars" class="bars bars-slant"></div>
+          </div>
+        </section>
+
+        </div>
+        <!-- end of the sticky zone -->
+
+        <!-- ======================================== TRANSACTIONS ======================================== -->
+        <section class="subcard tx-sub" id="secTx">
+          <div class="graphtitle"><b>Transactions</b></div>
+          <div class="small">Records behind the filters</div>
+
+          <div class="search-box">
+            <input
+              id="search"
+              aria-label="Search underlying transactions"
+              placeholder="Search records..."
+            />
+            <button
+              id="searchClear"
+              class="search-clear"
+              type="button"
+              title="Clear search"
+              aria-label="Clear search"
+              hidden
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="scroll">
+          <table>
+            <colgroup>
+              <col style="width: 18%" />
+              <col style="width: 28%" />
+              <col style="width: 20%" />
+              <col style="width: 18%" />
+              <col style="width: 16%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="sortable" data-col="Date">
+                  <span class="sorthead">
+                    <span class="sortname">Date</span>
+                    <span class="sortarrow" aria-hidden="true"></span>
+                  </span>
+                </th>
+                <th class="sortable" data-col="Particular">
+                  <span class="sorthead">
+                    <span class="sortname">Particular</span>
+                    <span class="sortarrow" aria-hidden="true"></span>
+                  </span>
+                </th>
+                <th class="sortable" data-col="Category">
+                  <span class="sorthead">
+                    <span class="sortname">Category</span>
+                    <span class="sortarrow" aria-hidden="true"></span>
+                  </span>
+                </th>
+                <th class="sortable" data-col="Mode">
+                  <span class="sorthead">
+                    <span class="sortname">Mode</span>
+                    <span class="sortarrow" aria-hidden="true"></span>
+                  </span>
+                </th>
+                <th class="sortable" data-col="Amount">
+                  <span class="sorthead">
+                    <span class="sortname">Amount</span>
+                    <span class="sortarrow" aria-hidden="true"></span>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      
+        </section>
+      </section>
+
+      <!-- ================================== SHARE OF EXPENDITURE: FOUR HALF DONUTS (own filters) ================= -->
+      <section class="card card-gap" id="secShare">
+        <div>
+          <div class="graphtitle"><b data-t="Share of {Share}">Share of Expenditure</b></div>
+          <div class="small">Compare specifics with the rest</div>
+        </div>
+
+        <!-- Sticky zone, same idea as the calendar: the filter row stays
+            pinned while the donut rows inside this zone scroll past.
+            donuts.js puts every row EXCEPT the last one in #donuts, so the
+            filters are released where the last row (#donutsLast) begins. -->
+        <div class="donut-stick-zone">
+          <div class="filters chart-filters sticky-filters" data-filter-bar="dn"></div>
+
+          <!-- All rows of donuts but the last, drawn by donuts.js -->
+          <div id="donuts" class="donuts"></div>
+        </div>
+        <!-- end of the sticky zone -->
+
+        <!-- Last row of donuts (outside the zone, so the filters let go here) -->
+        <div id="donutsLast" class="donut-row donut-last"></div>
+      </section>
+
+      <!-- =================== DAILY SPENDING CALENDAR (own filters) ============ -->
+      <section class="card card-gap" id="secCalendar">
+        <div>
+          <div class="graphtitle"><b data-t="Daily {flow} calendar">Daily spending calendar</b></div>
+          <div class="small">
+            Click a coloured day to see its transactions
+          </div>
+        </div>
+
+        <!-- Sticky zone: the filter row stays pinned to the top of the screen
+            while the months inside this zone scroll past. heatmap.js puts
+            every row of months EXCEPT the last one in #heatmap, so the
+            filters are released where the last row (#heatmapLast) begins. -->
+        <div class="heat-stick-zone">
+          <div class="filters chart-filters sticky-filters" data-filter-bar="hm" data-year-label="Year"></div>
+
+          <!-- The year and all rows of months but the last, drawn by heatmap.js -->
+          <div id="heatmap" class="heatmap"></div>
+        </div>
+        <!-- end of the sticky zone -->
+
+        <!-- Last row of months (outside the zone, so the filters let go here) -->
+        <div id="heatmapLast" class="heat-months heat-last"></div>
+        <div id="heatmapLegend" class="heat-legend"></div>
+      </section>
+
+      <!-- =================== SPENDING TREND: line chart (own controls) ============ -->
+      <section class="card card-gap" id="secTrend">
+        <div>
+          <div class="graphtitle"><b data-t="{Flow} trend">Spending trend</b></div>
+          <div class="small">
+            Follow a category over time and compare up to 3
+          </div>
+        </div>
+
+        <div class="filters chart-filters lc-controls">
+          <div class="field">
+            <span class="small field-label" id="lcCatLabel">Categories</span>
+            <div id="lcCatMulti" class="multi">
+              <button type="button" id="lcCatToggle" aria-labelledby="lcCatLabel lcCatToggle">All selected ▾</button>
+              <div id="lcCatMenu" class="multi-menu"></div>
+            </div>
+          </div>
+          <label class="lc-normalize" id="lcNormalizeWrap" hidden>
+            <input type="checkbox" id="lcNormalize" /> Normalize
+          </label>
+          <div class="lc-ranges" id="lcRanges" role="group" aria-label="Time frame"></div>
+        </div>
+
+        <div id="lineChart" class="line-box" role="img" data-t-label="{Flow} trend line chart" aria-label="Spending trend line chart"></div>
+        <div id="lineLegend" class="legend line-legend"></div>
+      </section>
+
+      <!-- ======= MULTI-YEAR MONTHLY COMPARISON (own filters) ===== -->
+      <section class="card card-gap" id="secMonthly">
+        <div>
+          <div class="graphtitle"><b>Month-wise comparison</b></div>
+          <div class="small" data-t="Compare monthly {flow} across years">Compare monthly spending across years</div>
+        </div>
+
+        <div class="filters chart-filters" data-filter-bar="my"></div>
+
+        <div
+          id="multiYearChart"
+          class="chart-box"
+          role="img"
+          aria-label="Multi-year monthly comparison chart"
+        ></div>
+        <div id="multiYearLegend" class="legend"></div>
+      </section>
+
+      <!-- ========= MULTI-YEAR CATEGORY COMPARISON (own filters) ======= -->
+      <section class="card card-gap" id="secCategory">
+        <div>
+          <div class="graphtitle"><b>Category-wise comparison</b></div>
+          <div class="small">Compare category totals across years</div>
+        </div>
+
+        <div class="filters chart-filters" data-filter-bar="cy"></div>
+
+        <div
+          id="categoryYearChart"
+          class="chart-box"
+          role="img"
+          aria-label="Multi-year category comparison chart"
+        ></div>
+        <div id="categoryYearLegend" class="legend"></div>
+      </section>
+    </main>
+
+    <!-- ======================================== OVERVIEW PAGE ========================================
+         Income and Expense combined. Shown instead of the module page and the
+         insights panel. Filled by overview.js. -->
+    <main class="wrap ov-page" id="overviewPage" hidden>
+      <div class="page-head ov-pagehead">
+        <div>
+          <h1 class="page-title">Overview</h1>
+          <div class="small" id="ovSub">Income and Expense sheets combined</div>
+        </div>
+        <div class="ov-period" id="ovPeriod" role="group" aria-label="Period">
+          <button type="button" data-period="month" class="on" aria-pressed="true">Month</button>
+          <button type="button" data-period="year" aria-pressed="false">Year</button>
+        </div>
+      </div>
+      <div id="ovBody"></div>
+    </main>
+
+    <!-- ======================================== MARKET PAGE ========================================
+         Shares, ETFs and mutual funds from the market file. Filled by market.js. -->
+    <main class="wrap ov-page" id="marketPage" hidden>
+      <div class="page-head">
+        <h1 class="page-title">Market</h1>
+        <div class="small" id="mkSub">Shares, ETFs and mutual funds</div>
+      </div>
+      <div id="mkBody"></div>
+    </main>
+
+    <!-- ======================================== INSIGHTS PANEL ========================================
+         Right column, stays in place while the page scrolls; its own content
+         scrolls when taller than the screen. Filled by insights.js. -->
+    <aside class="rail" aria-label="Insights">
+      <div id="insights" class="rail-inner"></div>
+    </aside>
+    </div>
+
+    <button id="toTop" class="to-top" type="button" title="Back to top" aria-label="Back to top" hidden>↑</button>
+
+    <!-- ======================================== POP-UP: transactions of one calendar day ======================== -->
+    <dialog id="dayDialog" class="day-dialog" aria-labelledby="dayDialogTitle">
+      <div class="day-dialog-box">
+        <div class="day-dialog-head">
+          <div>
+            <b id="dayDialogTitle"></b>
+            <div class="small" id="dayDialogSummary"></div>
+          </div>
+          <button
+            type="button"
+            id="dayDialogClose"
+            class="day-dialog-close"
+            title="Close"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="day-dialog-body">
+          <table>
+            <colgroup>
+              <col style="width: 40%" />
+              <col style="width: 22%" />
+              <col style="width: 18%" />
+              <col style="width: 20%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Particular</th>
+                <th>Category</th>
+                <th>Mode</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody id="dayDialogRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- ======================================== POP-UP: settings read from the workbook ======================== -->
+    <dialog id="settingsDialog" class="day-dialog" aria-labelledby="settingsTitle">
+      <div class="day-dialog-box">
+        <div class="day-dialog-head">
+          <div>
+            <b id="settingsTitle">Settings</b>
+            <div class="small" id="settingsNote"></div>
+          </div>
+          <button
+            type="button"
+            id="settingsClose"
+            class="day-dialog-close"
+            title="Close"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="settings-body" id="settingsBody"></div>
+      </div>
+    </dialog>
+
+    <!--
+      Scripts are plain (classic) scripts, so this page opens by double-click.
+      ORDER MATTERS: each file may use what the files above it define.
+    -->
+    <script src="src/config.js"></script>
+    <script src="src/utils.js"></script>
+    <script src="src/state.js"></script>
+    <script src="src/modules.js"></script>
+    <script src="src/excel.js"></script>
+    <script src="src/multiselect.js"></script>
+    <script src="src/filterGroup.js"></script>
+    <script src="src/filters.js"></script>
+    <script src="src/dashboard.js"></script>
+    <script src="src/table.js"></script>
+    <script src="src/charts.js"></script>
+    <script src="src/monthlyCompare.js"></script>
+    <script src="src/categoryCompare.js"></script>
+    <script src="src/lineChart.js"></script>
+    <script src="src/heatmap.js"></script>
+    <script src="src/donuts.js"></script>
+    <script src="src/settings.js"></script>
+    <script src="src/insights.js"></script>
+    <script src="src/overview.js"></script>
+    <script src="src/market.js"></script>
+    <script src="src/main.js"></script>
+  </body>
+</html>

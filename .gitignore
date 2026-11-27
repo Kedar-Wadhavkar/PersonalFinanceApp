@@ -1,0 +1,6 @@
+# Keep real workbooks out of the repo
+*.xlsx
+!sample-workbook.xlsx
+~$*
+.DS_Store
+Thumbs.db
