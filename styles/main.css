@@ -2689,6 +2689,10 @@ main.wrap[hidden] {
   box-shadow: inset 0 0 0 2px #dc2626;
 }
 
+.heat-legend > .mk-sellkey:first-child {
+  margin-left: 0;
+}
+
 .heat-swatch.mk-sellkey {
   width: 12px;
   height: 12px;

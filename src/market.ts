@@ -520,10 +520,11 @@ function drawMkCalendar(): void {
       byDay.set(o.date, e);
     }
   }
-  // A day is coloured by what was bought; with only Sell ticked, by what was sold
+  // A day is coloured only by what was bought. A day with a sell gets a red
+  // border, on every view (with only Sell ticked those days stay uncoloured).
   const sellOnly = !types.has("Buy");
-  const bothTypes = types.has("Buy") && types.has("Sell");
-  const amount = (e: { buy: number; sell: number }) => (sellOnly ? e.sell : e.buy);
+  const hasSells = types.has("Sell");
+  const amount = (e: { buy: number; sell: number }) => e.buy;
 
   // Colour steps (about half the days in the lightest colour, a few in the darkest)
   const amounts = [...byDay.values()].map(amount).filter((v) => v > 0).sort((a, b) => a - b);
@@ -555,7 +556,7 @@ function drawMkCalendar(): void {
       count += e.list.length;
       const tip = `${mkDate(iso)}: ${e.list.map((o) => `${o.type} ${mkQty(o.units)} ${o.holding} ${money(o.value)}`).join("; ")}`;
       const v = amount(e);
-      html += `<button type="button" class="heat-day ${v > 0 ? `mk-l${level(v)}` : "heat-none"}${bothTypes && e.sell ? " mk-sell" : ""}" data-day="${iso}" title="${esc(tip)}" aria-label="${esc(tip)}"></button>`;
+      html += `<button type="button" class="heat-day ${v > 0 ? `mk-l${level(v)}` : "heat-none"}${e.sell ? " mk-sell" : ""}" data-day="${iso}" title="${esc(tip)}" aria-label="${esc(tip)}"></button>`;
     }
     html += `</div>`;
     // Figures under the month (not for a month that has not started yet)
@@ -567,12 +568,13 @@ function drawMkCalendar(): void {
 
   const chosen = CONFIG.months.map((_, m) => m).filter((m) => months.has(CONFIG.months[m]!));
   let html = `<div class="heat-year">${esc(year)}</div><div class="heat-months">${chosen.map(monthHtml).join("")}</div>`;
+  const sellKey = hasSells ? `<i class="heat-swatch mk-sellkey"></i><span class="small">Day with a sell</span>` : "";
   if (amounts.length) {
     html += `<div class="heat-legend"><span class="small">${money(amounts[0]!)}</span>${[1, 2, 3, 4]
       .map((l) => `<i class="heat-swatch mk-l${l}"></i>`)
-      .join("")}<span class="small">${money(amounts[amounts.length - 1]!)}</span>${
-      bothTypes ? `<i class="heat-swatch mk-sellkey"></i><span class="small">Day with a sell</span>` : ""
-    }</div>`;
+      .join("")}<span class="small">${money(amounts[amounts.length - 1]!)}</span>${sellKey}</div>`;
+  } else if (sellKey) {
+    html += `<div class="heat-legend">${sellKey}</div>`;
   } else {
     html += `<div class="heat-legend"><span class="small">No orders in this selection</span></div>`;
   }
