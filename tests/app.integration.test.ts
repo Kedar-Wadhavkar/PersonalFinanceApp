@@ -367,3 +367,37 @@ describe("the Net worth page", () => {
     expect(text("nwBody")).toContain("today's prices");
   });
 });
+
+describe("the what-if simulator on the Net worth page", () => {
+  it("projects from the sample workbook and reacts to the sliders", async () => {
+    const buf = readFileSync(resolve(__dirname, "../public/sample-workbook.xlsx"));
+    await choose(new File([buf], "sample-workbook.xlsx"));
+    click(document.querySelector(".side-item[data-page='networth']"));
+    expect(text("nwSim")).toContain("What if: forecast");
+    const out = () => text("nwSimOut");
+    const before = out();
+    expect(before).toContain("Net worth in 5 years");
+    expect(before).toContain("+₹0 vs your current path");
+
+    const cut = $<HTMLInputElement>("simCut");
+    cut.value = "20";
+    cut.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(text("simCutOut")).toBe("20%");
+    expect(out()).not.toContain("+₹0 vs your current path");
+    expect($("simCut")).toBe(cut); // the slider itself is not redrawn
+
+    click(document.querySelector("#simPeriod button[data-years='10']"));
+    expect(out()).toContain("Net worth in 10 years");
+    expect(document.querySelectorAll("#nwSimOut .sim-table tbody tr")).toHaveLength(4);
+
+    click(document.querySelector("#simView button[data-view='saved']"));
+    expect(out()).toContain("Money saved, your changes");
+  });
+
+  it("lets the discretionary categories be chosen", () => {
+    const chip = document.querySelector<HTMLElement>("#simChips .sim-chip[aria-pressed='false']")!;
+    const name = chip.dataset.cat!;
+    click(chip);
+    expect(document.querySelector(`#simChips .sim-chip[data-cat='${name}']`)!.getAttribute("aria-pressed")).toBe("true");
+  });
+});

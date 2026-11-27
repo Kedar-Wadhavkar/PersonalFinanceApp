@@ -1,4 +1,5 @@
 import { CONFIG } from "./config";
+import { simHtml, simOutputHtml, simOutputs, simState, type SimInput } from "./forecast";
 import { excelDate, normalizeCurrency, parseAmount } from "./excel";
 import { monthIndex, monthName, totalsByMonth } from "./insights";
 import { getMarketData, marketSummary, mkFindHeader } from "./market";
@@ -258,6 +259,40 @@ const cls = (v: number): string => (v < 0 ? "ov-neg" : v > 0 ? "ov-pos" : "");
 const dmy = (iso: string): string => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
 const pct = (v: number, of: number): string => (of > 0 ? `${Math.round((v / of) * 100)}%` : "–");
 
+/* ---- What-if simulator (forecast.ts) ---- */
+
+function simInput(months: NetWorthMonth[]): SimInput {
+  const latest = months[months.length - 1];
+  const md = getMarketData();
+  const marketOn = !!md && activeCurrency === CONFIG.currency;
+  return {
+    income: (moduleData.income?.records || []).filter((r) => r.Currency === activeCurrency),
+    expense: (moduleData.expense?.records || []).filter((r) => r.Currency === activeCurrency),
+    orders: marketOn ? md.orders : [],
+    start: latest ? { cash: latest.cash, invested: latest.market, other: latest.other, debt: latest.debt } : { cash: 0, invested: 0, other: 0, debt: 0 },
+    hasStart: !!latest,
+    xirr: marketOn ? marketSummary().xirr : null,
+  };
+}
+
+let lastSimInput: SimInput | null = null;
+
+function drawSimOutput(): void {
+  if (!lastSimInput) return;
+  const out = document.getElementById("nwSimOut");
+  if (out) out.innerHTML = simOutputHtml(lastSimInput);
+  const labels = simOutputs();
+  for (const id of Object.keys(labels)) {
+    const el = document.getElementById(`${id}Out`);
+    if (el) el.textContent = labels[id]!;
+  }
+}
+
+function simSectionHtml(months: NetWorthMonth[]): string {
+  lastSimInput = simInput(months);
+  return `<section class="card card-gap" id="nwSim">${simHtml(lastSimInput)}</section>`;
+}
+
 export function renderNetWorth(): void {
   if (activePage !== "networth") return;
   const body = $("nwBody");
@@ -268,7 +303,8 @@ export function renderNetWorth(): void {
       "Net worth",
       accountsData ? `No accounts in ${activeCurrency}` : "Add an Accounts sheet",
       'Add a sheet named "Accounts" to your workbook with the headings Date, Account, Type and Balance (Currency is optional), one row per account each time you note its balance. Type Loan or Card marks a debt. Your market file, if loaded, is added as an asset.',
-    );
+    ) + simSectionHtml(months);
+    drawSimOutput();
     return;
   }
   const at = (m: number) => months.find((x) => x.m === m);
@@ -437,7 +473,10 @@ export function renderNetWorth(): void {
         <tbody>${tableRows}</tbody>
         <tfoot><tr><td>Net worth</td><td class="num">${esc(money(cur.net))}</td><td class="num ${prev ? cls(cur.net - prev.net) : ""}">${prev ? esc(signed(cur.net - prev.net)) : "–"}</td><td></td><td></td></tr></tfoot>
       </table></div>
-    </section>`;
+    </section>
+
+    ${simSectionHtml(months)}`;
+  drawSimOutput();
   // Newest months are at the right end of the chart: show them first
   const scroller = body.querySelector<HTMLElement>("#nwMonthly .ov-scroll");
   if (scroller) scroller.scrollLeft = scroller.scrollWidth;
@@ -479,10 +518,55 @@ export function setupNetWorth(): void {
       window.scrollTo({ top: 0 });
     };
   });
-  $("nwBody").addEventListener("click", (e) => {
-    const b = (e.target as Element).closest<HTMLElement>(".nw-month");
+  const body = $("nwBody");
+  body.addEventListener("click", (e) => {
+    const t = e.target as Element;
+    const month = t.closest<HTMLElement>(".nw-month");
+    if (month) {
+      nwState.month = Number(month.dataset.month);
+      renderNetWorth();
+      return;
+    }
+    const b = t.closest<HTMLElement>("#nwSim button");
     if (!b) return;
-    nwState.month = Number(b.dataset.month);
-    renderNetWorth();
+    const d = b.dataset;
+    if (d.years) {
+      simState.years = Number(d.years);
+      body.querySelectorAll<HTMLElement>("#simPeriod button").forEach((x) => {
+        const on = x === b;
+        x.classList.toggle("on", on);
+        x.setAttribute("aria-pressed", String(on));
+      });
+    } else if (d.view) {
+      simState.view = d.view as "net" | "saved";
+    } else if (d.cat !== undefined && simState.discretionary) {
+      const on = !simState.discretionary.has(d.cat);
+      if (on) simState.discretionary.add(d.cat);
+      else simState.discretionary.delete(d.cat);
+      b.setAttribute("aria-pressed", String(on));
+      // The cut slider's hint names the discretionary amount: redraw the block
+      renderSim();
+      return;
+    } else return;
+    drawSimOutput();
   });
+  // Sliders: only the results are redrawn, so the slider keeps focus while dragged
+  body.addEventListener("input", (e) => {
+    const el = e.target as HTMLInputElement;
+    const v = Number(el.value);
+    if (el.id === "simCut") simState.cut = v;
+    else if (el.id === "simExtra") simState.extra = v;
+    else if (el.id === "simRet") simState.ret = v;
+    else if (el.id === "simGrowth") simState.growth = v;
+    else return;
+    drawSimOutput();
+  });
+}
+
+// Redraw only the simulator block (keeps the chart scroll and the rest)
+function renderSim(): void {
+  const box = document.getElementById("nwSim");
+  if (!box || !lastSimInput) return;
+  box.innerHTML = simHtml(lastSimInput);
+  drawSimOutput();
 }

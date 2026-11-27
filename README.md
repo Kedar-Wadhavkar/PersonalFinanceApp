@@ -7,7 +7,7 @@ Personal Finance Analytics: an offline, browser-based dashboard built from one E
 - **Overview**: income vs expense, savings, cumulative savings, expense cover
 - **Expense** and **Income**: KPIs, monthly trends, category donuts, heatmap, comparisons, searchable table
 - **Market**: investments from an order log and holdings/prices sheet (calendar, treemap, invested vs current, buy history)
-- **Net worth**: assets minus debts month by month, from an Accounts sheet plus the market file (stacked monthly chart, what you own and owe, what changed and how much was saved, accounts table)
+- **Net worth**: assets minus debts month by month, from an Accounts sheet plus the market file (stacked monthly chart, what you own and owe, what changed and how much was saved, accounts table), plus a **What if** simulator: 12-month averages of income, expenses and savings rate, sliders for cutting discretionary spending, extra monthly investment, expected return and income growth, and 1 to 20 year net worth or savings projections against your current path
 - Coming later: Loans, Budgets
 
 ## Live site

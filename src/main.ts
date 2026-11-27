@@ -10,6 +10,7 @@ import { relayoutHeatmap, resetHeatmap, setupHeatmapClicks } from "./heatmap";
 import { setupInsights } from "./insights";
 import { renderLineChart, setupLineChartEvents } from "./lineChart";
 import { parseMarket, selectMarket, setMarketData, setupMarket, updateMarketCount } from "./market";
+import { resetSimulator } from "./forecast";
 import { nwState, parseAccounts, selectNetWorth, setAccountsData, setupNetWorth, updateNetWorthCount } from "./networth";
 import { MODULES, MODULE_KEYS, activeModule, moduleData, selectModule, setupModuleNav } from "./modules";
 import { renderMultiYear, resetMultiYear } from "./monthlyCompare";
@@ -85,6 +86,7 @@ $<HTMLInputElement>("file").onchange = async (e) => {
     $("fileName").title = shown;
     updateMarketCount();
     updateNetWorthCount();
+    resetSimulator();
 
     if (total) {
       // Stay on the module shown, unless it has nothing in this workbook
