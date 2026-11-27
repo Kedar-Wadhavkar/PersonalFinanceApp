@@ -72,7 +72,7 @@ export const NO_DATA_HTML = '<div class="small nodata">No data selected</div>';
     unless `button` is false, a Load Excel button (a label for the file input). */
 export function emptyCardHtml(eyebrow: string, title: string, text: string, button = true): string {
   return `<section class="card empty-state"><div class="empty-main"><span class="empty-eyebrow">${esc(eyebrow)}</span><h2 class="empty-title">${esc(title)}</h2><p class="empty-text">${esc(text)}</p>${
-    button ? '<div class="empty-actions"><label for="file" class="btn btn-primary" role="button" tabindex="0">Load Excel</label></div>' : ""
+    button ? '<div class="empty-actions"><button type="button" class="btn btn-primary" data-pick-file>Load Excel</button></div>' : ""
   }</div></section>`;
 }
 

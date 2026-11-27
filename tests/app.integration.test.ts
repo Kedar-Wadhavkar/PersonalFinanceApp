@@ -2,7 +2,7 @@
    chosen in the file input, exactly as a person uses the app. */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildXlsx, fileOf } from "./helpers/xlsx";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -92,7 +92,10 @@ describe("the app before a file is loaded", () => {
     expect(visible("moduleEmpty")).toBe(true);
     expect(text("moduleEmpty")).toContain("See where your money goes");
     // The Load Excel button there opens the same file input
-    expect($("moduleEmpty").querySelector("label[for='file']")).not.toBeNull();
+    const pick = vi.spyOn($<HTMLInputElement>("file"), "click").mockImplementation(() => {});
+    click($("moduleEmpty").querySelector("button[data-pick-file]"));
+    expect(pick).toHaveBeenCalledOnce();
+    pick.mockRestore();
     expect($("moduleEmpty").querySelector<HTMLAnchorElement>("a[download]")!.getAttribute("href")).toBe("sample-workbook.xlsx");
   });
 
@@ -109,7 +112,7 @@ describe("the app before a file is loaded", () => {
     expect(tight("ovBody")).toContain("Income and spending, side by side".replace(/\s+/g, ""));
     click(document.querySelector(".side-item[data-page='market']"));
     expect(text("mkBody")).toContain("Track your investments");
-    expect($("mkBody").querySelector("label[for='file']")).not.toBeNull();
+    expect($("mkBody").querySelector("button[data-pick-file]")).not.toBeNull();
     click(document.querySelector(".side-item[data-module='expense']"));
   });
 });
@@ -262,6 +265,55 @@ describe("loading the market file next to it", () => {
     expect(page()).toBe("modulePage:Expense");
     go("[data-page='market']");
     expect(page()).toBe("marketPage");
+  });
+});
+
+describe("keyboard and screen reader access", () => {
+  it("keeps the file input reachable with Tab (visually hidden, not hidden)", () => {
+    const input = $<HTMLInputElement>("file");
+    expect(input.hidden).toBe(false);
+    expect(input.classList.contains("visually-hidden")).toBe(true);
+    expect(input.getAttribute("aria-label")).toContain("Excel");
+  });
+
+  it("starts with a skip link that moves focus to the page showing", () => {
+    const skip = document.querySelector<HTMLAnchorElement>("a.skip-link")!;
+    expect(document.body.firstElementChild).toBe(skip);
+    click(document.querySelector(".side-item[data-page='market']"));
+    click(skip);
+    expect(document.activeElement).toBe($("marketPage"));
+    click(document.querySelector(".side-item[data-module='expense']"));
+    click(skip);
+    expect(document.activeElement).toBe($("modulePage"));
+  });
+
+  it("sorts the transactions with buttons in the headings and reports the order", () => {
+    const amount = document.querySelector<HTMLElement>("th[data-col='Amount']")!;
+    const button = amount.querySelector<HTMLButtonElement>("button.sorthead")!;
+    expect(document.querySelectorAll("th.sortable button.sorthead").length).toBe(5);
+    click(button);
+    const first = amount.getAttribute("aria-sort");
+    expect(["ascending", "descending"]).toContain(first);
+    click(button);
+    expect(amount.getAttribute("aria-sort")).toBe(first === "ascending" ? "descending" : "ascending");
+    expect(document.querySelector("th[data-col='Date']")!.getAttribute("aria-sort")).toBe("none");
+  });
+
+  it("gives every KPI switch a name", () => {
+    document.querySelectorAll(".kpi-switch").forEach((b) => expect(b.getAttribute("aria-label")).toMatch(/^Show /));
+  });
+
+  it("makes market holdings and sorting usable from the keyboard", () => {
+    click(document.querySelector(".side-item[data-page='market']"));
+    const sorted = $("mkBody").querySelector(".mk-table th[aria-sort]");
+    expect(sorted).not.toBeNull();
+    const name = $("mkBody").querySelector<HTMLButtonElement>(".mk-table tbody button.mk-link[data-holding]");
+    expect(name).not.toBeNull();
+    $("mkBody").querySelectorAll(".mk-tile").forEach((tile) => {
+      // The accessible name starts with what the box shows: holding and share
+      expect(tile.getAttribute("aria-label")!.startsWith((tile as HTMLElement).dataset.holding!)).toBe(true);
+    });
+    click(document.querySelector(".side-item[data-module='expense']"));
   });
 });
 

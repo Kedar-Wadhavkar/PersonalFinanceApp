@@ -1,5 +1,5 @@
 import { CONFIG } from "./config";
-import { excelDate, parseAmount } from "./excel";
+import { excelDate, parseAmount } from "./cellValues";
 import { activePage, showPage } from "./overview";
 import { activeCurrency, setActiveCurrency } from "./state";
 import type {
@@ -553,9 +553,9 @@ function mkLayoutTreemap(s: MarketSummary): void {
       const tip = `${h.name} · ${h.category}\n${mkState.treeBy === "invested" ? "Invested" : "Current value"} ${money(r.value)} (${mkPct(share)} of total)\nProfit / loss ${mkSigned(h.pnl)} (${mkSignPct(h.pct)})`;
       const big = r.w > 84 && r.h > 38;
       // Lighter box = smaller share inside its category colour
-      return `<button type="button" class="mk-tile" data-holding="${esc(h.name)}" title="${esc(tip)}" aria-label="${esc(tip)}"
+      return `<button type="button" class="mk-tile" data-holding="${esc(h.name)}" title="${esc(tip)}" aria-label="${esc(`${h.name} ${mkPct(share)}, ${tip.slice(h.name.length + 3).replace(/\n/g, ", ")}`)}"
         style="left:${r.x.toFixed(1)}px;top:${r.y.toFixed(1)}px;width:${Math.max(0, r.w - 2).toFixed(1)}px;height:${Math.max(0, r.h - 2).toFixed(1)}px;background:${mkCatColor(h.category)};opacity:${(0.55 + Math.min(0.45, share * 6)).toFixed(2)}">
-        ${big ? `<span class="mk-tile-name">${esc(h.name)}</span><span class="mk-tile-val">${esc(mkPct(share))}</span>` : ""}
+        ${big ? `<span class="mk-tile-name">${esc(h.name)}</span> <span class="mk-tile-val">${esc(mkPct(share))}</span>` : ""}
       </button>`;
     })
     .join("");
@@ -614,7 +614,9 @@ function mkTableHtml(s: MarketSummary): string {
     const v = h[k] as never;
     switch (type) {
       case "text":
-        return k === "category" ? `<span class="ov-sw" style="background:${mkCatColor(v)}"></span>${esc(v)}` : esc(v);
+        if (k === "category") return `<span class="ov-sw" style="background:${mkCatColor(v)}"></span>${esc(v)}`;
+        // The name is a button, so a holding's buys can be opened from the keyboard too
+        return k === "name" ? `<button type="button" class="mk-link" data-holding="${esc(v)}">${esc(v)}</button>` : esc(v);
       case "qty":
         return esc(mkQty(v));
       case "price":
@@ -633,7 +635,7 @@ function mkTableHtml(s: MarketSummary): string {
     return "";
   };
   const head = MK_COLUMNS.map(
-    (c) => `<th scope="col" class="${c[2] === "text" ? "" : "num"}"><button type="button" data-sort="${c[0]}">${esc(c[1])}${c[0] === key ? (mkState.sortDir < 0 ? " ▼" : " ▲") : ""}</button></th>`,
+    (c) => `<th scope="col" class="${c[2] === "text" ? "" : "num"}"${c[0] === key ? ` aria-sort="${mkState.sortDir < 0 ? "descending" : "ascending"}"` : ""}><button type="button" data-sort="${c[0]}">${esc(c[1])}${c[0] === key ? (mkState.sortDir < 0 ? " ▼" : " ▲") : ""}</button></th>`,
   ).join("");
   const body = rows
     .map(
@@ -711,7 +713,7 @@ function mkHistoryHtml(s: MarketSummary): string {
         .join("")}</div>
     </div>
     <div class="mk-hist">
-      <div class="mk-tablewrap mk-htable"><table class="mk-table">
+      <div class="mk-tablewrap mk-htable" tabindex="0" role="region" aria-label="Orders of the chosen holding"><table class="mk-table">
         <thead><tr><th>Date</th><th class="num">Qty</th><th class="num">Unit avg</th><th class="num">vs last buy</th></tr></thead>
         <tbody>${rowsHtml || '<tr><td colspan="4" class="small">No orders for this choice.</td></tr>'}</tbody>
       </table></div>
