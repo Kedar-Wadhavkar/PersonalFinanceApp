@@ -4,7 +4,7 @@ import { MODULE_KEYS, activeModule, moduleData } from "./modules";
 import type { ModuleKey, MonthSummary, OverviewData, Transaction } from "./types";
 import { currencySymbol } from "./settings";
 import { activeCurrency, setActiveCurrency } from "./state";
-import { $, esc, money, moneyShort, setMoneyCurrency } from "./utils";
+import { $, emptyCardHtml, esc, money, moneyShort, setMoneyCurrency } from "./utils";
 
 /* =========================================================================
 overview.ts
@@ -98,11 +98,9 @@ export function renderOverview(): void {
   const d = overviewData();
   if (!d) {
     const loaded = MODULE_KEYS.some((k) => moduleData[k]?.records.length);
-    $("ovBody").innerHTML = `<section class="card"><div class="nodata small">${
-      loaded
-        ? `No income or expenses in ${esc(activeCurrency)} in this workbook. Pick another currency in the side bar.`
-        : "Load a workbook with an Income and an Expense sheet to see the overview."
-    }</div></section>`;
+    $("ovBody").innerHTML = loaded
+      ? emptyCardHtml("Overview", `Nothing in ${activeCurrency}`, `No income or expenses in ${activeCurrency} in this workbook. Pick another currency in the side bar.`, false)
+      : emptyCardHtml("Overview", "Income and spending, side by side", "Load a workbook with an Income and an Expense sheet to see what you earned, spent and saved each month.");
     $("ovSub").textContent = "Income and Expense sheets combined";
     return;
   }

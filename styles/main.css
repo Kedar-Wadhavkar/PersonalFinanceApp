@@ -1654,6 +1654,10 @@ body:has(.sortwrap.open) .to-top {
   html {
     scroll-behavior: auto;
   }
+
+  .spinner {
+    animation-duration: 2.4s;
+  }
 }
 
 /* =========================================================================
@@ -1674,6 +1678,9 @@ body:has(.sortwrap.open) .to-top {
 .app > main.wrap {
   min-width: 0;
   width: 100%;
+  /* .wrap's "margin: auto" would centre a short page (an empty state)
+     vertically inside the full-height grid; keep pages at the top */
+  margin: 0 auto;
 }
 
 .side {
@@ -2983,5 +2990,405 @@ button.mk-day:focus-visible {
   .mk-select select {
     min-width: 0;
     max-width: 60vw;
+  }
+}
+
+/* =========================================================================
+ 15. Visual hierarchy
+ Page title > section titles > sub-card titles; KPI figures stand out;
+ money in tables lines up on the right.
+========================================================================= */
+
+.page-title {
+  letter-spacing: -0.01em;
+}
+
+.card .graphtitle b {
+  font-size: 17px;
+  color: #101828;
+}
+
+.subcard .graphtitle b {
+  font-size: 14px;
+}
+
+.kpi-label {
+  font-weight: 500;
+  color: #475569;
+}
+
+.kpi b {
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Transactions: amounts right-aligned with even digit widths */
+.tx-sub th:last-child,
+.tx-sub td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-sub tbody tr.vrow:hover td {
+  background: #f8fafc;
+}
+
+/* Phones: the table fits the screen instead of scrolling sideways (which
+   hid the Amount column). Mode is left out here: the Payment mode chart
+   above shows it, and search still finds it. */
+@media (max-width: 700px) {
+  .tx-sub .scroll table {
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  .tx-sub col:nth-child(1) {
+    width: 27% !important;
+  }
+
+  .tx-sub col:nth-child(2) {
+    width: 29% !important;
+  }
+
+  .tx-sub col:nth-child(3) {
+    width: 21% !important;
+  }
+
+  .tx-sub col:nth-child(4) {
+    width: 23% !important;
+  }
+
+  .tx-sub col:nth-child(5) {
+    width: 0 !important;
+  }
+
+  .tx-sub th:nth-child(4),
+  .tx-sub td:nth-child(4) {
+    display: none;
+  }
+
+  .tx-sub .scroll th,
+  .tx-sub .scroll td {
+    padding: 10px 5px;
+  }
+
+  .tx-sub .vspacer td {
+    padding: 0;
+  }
+}
+
+/* Phones: Settings becomes a gear in the top-right corner of the band,
+   instead of taking a row of its own */
+@media (max-width: 800px) {
+  .side {
+    position: relative;
+  }
+
+  .side-bottom {
+    position: absolute;
+    top: 10px;
+    right: max(10px, env(safe-area-inset-right));
+    padding: 0;
+  }
+
+  .side-settings {
+    padding: 8px;
+  }
+
+  .side-settings .side-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* The insights panel, moved under the KPI cards (main.ts) */
+  #modulePage > .rail {
+    position: static;
+    height: auto;
+    margin: 0 0 14px;
+    border: 1px solid #dbe2ea;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+}
+
+/* =========================================================================
+ 16. Empty, loading and privacy states
+========================================================================= */
+
+/* A module page with no rows shows only its empty card (emptyState.ts) */
+.app.module-empty #modulePage > :not(.page-head):not(#err):not(#moduleEmpty),
+.app.module-empty .side-onpage,
+.app.module-empty .rail {
+  display: none;
+}
+
+.app.module-empty > main#modulePage {
+  grid-column: 2 / -1;
+  grid-row: 1 / span 2;
+}
+
+.app.no-data #modulePage > .page-head {
+  display: none;
+}
+
+.empty-state {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  padding: 32px;
+}
+
+.empty-state[hidden] {
+  display: none;
+}
+
+.empty-state.is-welcome {
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+  margin-top: 8px;
+}
+
+.empty-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2563eb;
+}
+
+.empty-title {
+  margin: 6px 0 8px;
+  font-size: 24px;
+  line-height: 1.25;
+  color: #101828;
+  letter-spacing: -0.01em;
+}
+
+.empty-text {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+}
+
+.btn:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.35);
+  outline-offset: 2px;
+}
+
+.empty-steps {
+  margin: 24px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.empty-steps li + li {
+  margin-top: 6px;
+}
+
+.privacy-panel {
+  align-self: start;
+  padding: 18px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.privacy-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.privacy-panel ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.privacy-panel li + li {
+  margin-top: 6px;
+}
+
+/* Side bar: the one-line privacy note under Load Excel (opens for details) */
+.privacy-note {
+  font-size: 12px;
+  color: #166534;
+}
+
+.privacy-note summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #dcfce7;
+  border-radius: 6px;
+  background: #f0fdf4;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.privacy-note summary::-webkit-details-marker {
+  display: none;
+}
+
+.privacy-note summary::after {
+  content: "";
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.privacy-note[open] summary::after {
+  transform: translateY(1px) rotate(-135deg);
+}
+
+.privacy-note summary:focus-visible {
+  outline: 3px solid rgba(22, 163, 74, 0.3);
+  outline-offset: 2px;
+}
+
+.privacy-note p {
+  margin: 6px 2px 0;
+  line-height: 1.45;
+  color: #475569;
+}
+
+/* Reading a workbook: a panel over the page */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(245, 247, 251, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.loading[hidden] {
+  display: none;
+}
+
+.loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 22px 28px;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #dbeafe;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 800px) {
+  .privacy-note {
+    flex: 1 1 100%;
+  }
+
+  .empty-state,
+  .empty-state.is-welcome {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .empty-title {
+    font-size: 21px;
+  }
+
+  .empty-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Tablet: KPI cards wrap to 2 per row before their figures have to break
+   over two lines, and the four bar lists stack so month names fit */
+@media (max-width: 1200px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .graphs4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

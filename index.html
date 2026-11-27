@@ -32,6 +32,14 @@
             hidden
           />
         </label>
+        <!-- Always visible: what happens to the data. More in the welcome card. -->
+        <details class="privacy-note">
+          <summary>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            <span>Private: stays on this device</span>
+          </summary>
+          <p>Files are read on this device and never uploaded or sent anywhere. Nothing is saved: refresh or close the tab and the data is gone.</p>
+        </details>
         <!-- Filled by settings.ts after a workbook is loaded -->
         <div id="currency" class="currency-radios" role="radiogroup" aria-label="Currency" hidden></div>
       </div>
@@ -77,6 +85,8 @@
         <div class="small" id="pageSub">Interactive analysis from yearly Excel tables</div>
       </div>
       <div id="err"></div>
+      <!-- Welcome card / "no rows" note, filled by emptyState.ts -->
+      <section id="moduleEmpty" class="card empty-state" hidden></section>
 
         <!-- ======================================== KPI CARDS ======================================== -->
         <section class="kpis">
@@ -459,6 +469,15 @@
     <aside class="rail" aria-label="Insights">
       <div id="insights" class="rail-inner"></div>
     </aside>
+    </div>
+
+    <!-- Shown while a workbook is being read (main.ts) -->
+    <div id="loading" class="loading" role="status" aria-live="polite" hidden>
+      <div class="loading-box">
+        <span class="spinner" aria-hidden="true"></span>
+        <b id="loadingText">Reading the workbook</b>
+        <span class="small">Processed on this device. Nothing is uploaded.</span>
+      </div>
     </div>
 
     <button id="toTop" class="to-top" type="button" title="Back to top" aria-label="Back to top" hidden>↑</button>

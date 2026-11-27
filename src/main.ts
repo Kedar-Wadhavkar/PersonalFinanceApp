@@ -13,6 +13,7 @@ import { parseMarket, selectMarket, setMarketData, setupMarket, updateMarketCoun
 import { MODULES, MODULE_KEYS, activeModule, moduleData, selectModule, setupModuleNav } from "./modules";
 import { renderMultiYear, resetMultiYear } from "./monthlyCompare";
 import { activePage, overviewState, selectOverview, setupOverview, showPage } from "./overview";
+import { setupEmptyState } from "./emptyState";
 import { setupSettings } from "./settings";
 import { resetTableMetrics, scrollTableToTop, setupTxSort } from "./table";
 import type { ModuleKey, ModuleParseResult, SheetMatrix } from "./types";
@@ -36,10 +37,16 @@ $<HTMLInputElement>("file").onchange = async (e) => {
   const files = [...(input.files ?? [])];
   if (!files.length) return;
 
-  // Show that a (large) file is being read
+  // Show that a (large) file is being read: the button text, and a
+  // panel over the page that also says the file stays on this device
   const label = $("uploadText");
   label.textContent = "Loading...";
   input.closest(".upload")!.setAttribute("aria-busy", "true");
+  $("loadingText").textContent = files.length > 1 ? `Reading ${files.length} files` : `Reading ${files[0]!.name}`;
+  $("loading").hidden = false;
+  document.querySelector(".app")!.setAttribute("aria-busy", "true");
+  // Let the browser paint the panel before the (blocking) parsing starts
+  await new Promise<void>((done) => requestAnimationFrame(() => setTimeout(done, 0)));
 
   try {
     const sheets: SheetMatrix[] = [];
@@ -95,6 +102,8 @@ $<HTMLInputElement>("file").onchange = async (e) => {
   } finally {
     label.textContent = "Load Excel";
     input.closest(".upload")!.removeAttribute("aria-busy");
+    $("loading").hidden = true;
+    document.querySelector(".app")!.removeAttribute("aria-busy");
     // Clear the choice, so picking the SAME file again (e.g. after editing
     // it in Excel) still triggers a reload
     input.value = "";
@@ -160,9 +169,26 @@ window.addEventListener(
 );
 toTop.onclick = () => window.scrollTo({ top: 0 });
 
+/* ------------ Insights panel placement ------------ */
+
+// Wide screens: the panel is a column on the right. Phones: it moves into
+// the page, under the KPI cards, so the page title and the headline figures
+// come first and the insights sit next to the charts they describe.
+const rail = document.querySelector<HTMLElement>(".rail")!;
+const railHome = rail.parentElement!;
+const railNext = rail.nextSibling;
+const phone = window.matchMedia("(max-width: 800px)");
+function placeRail(): void {
+  if (phone.matches) document.querySelector("#modulePage .kpis")!.after(rail);
+  else if (rail.parentElement !== railHome) railHome.insertBefore(rail, railNext);
+}
+placeRail();
+phone.addEventListener("change", placeRail);
+
 /* ------------ First draw (empty page, before a file is loaded) ------------ */
 
 setupSettings();
+setupEmptyState();
 setupModuleNav();
 setupInsights();
 setupOverview();
