@@ -4012,3 +4012,172 @@ button.mk-day:focus-visible {
     visibility: hidden;
   }
 }
+
+/* =========================================================================
+ 17. One control system
+ Every module page uses the same controls, in three kinds:
+   - buttons ....... filter dropdowns, Reset: white, grey edge, 8px corners
+   - chips ......... on/off choices in a row (time frames, categories,
+                     years, discretionary categories): round ends
+   - switch ........ one of two or more views (Month / Year, Invested /
+                     Current value, calendar years): grey track
+ All are 34px tall with 13px text, and a chosen chip looks the same
+ everywhere: light blue, like the chosen item in the side bar.
+========================================================================= */
+
+:root {
+  --ctl-height: 34px;
+  --ctl-font: 13px;
+  --ctl-radius: 8px;
+  --ctl-border: #cbd5e1;
+  --ctl-text: #334155;
+  --ctl-on-bg: #eff6ff;
+  --ctl-on-border: #2563eb;
+  --ctl-on-text: #1d4ed8;
+}
+
+/* Phones and small tablets: 40px, easier to tap */
+@media (max-width: 700px) {
+  :root {
+    --ctl-height: 40px;
+  }
+}
+
+/* Buttons: filter dropdowns and Reset */
+.multi > button,
+.filters > button {
+  min-height: var(--ctl-height);
+  padding: 0 12px;
+  font-size: var(--ctl-font);
+  color: var(--ctl-text);
+  border-color: var(--ctl-border);
+  border-radius: var(--ctl-radius);
+}
+
+.multi > button:hover,
+.filters > button:hover {
+  background: #f8fafc;
+}
+
+/* Chips */
+.lc-range,
+.mk-chip,
+.sim-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ctl-height);
+  padding: 0 14px;
+  border: 1px solid var(--ctl-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: var(--ctl-font);
+  font-weight: 400;
+  color: var(--ctl-text);
+}
+
+.lc-range:hover,
+.mk-chip:hover,
+.sim-chip:hover {
+  background: #f8fafc;
+}
+
+.lc-range[aria-pressed="true"],
+.mk-chip.on,
+.sim-chip[aria-pressed="true"] {
+  background: var(--ctl-on-bg);
+  border-color: var(--ctl-on-border);
+  color: var(--ctl-on-text);
+  font-weight: 500;
+}
+
+/* Switch */
+.ov-period {
+  align-items: center;
+  min-height: var(--ctl-height);
+  box-sizing: border-box;
+  padding: 3px;
+  border-color: var(--ctl-border);
+  border-radius: var(--ctl-radius);
+}
+
+.ov-period button {
+  min-height: calc(var(--ctl-height) - 8px); /* inside the 3px track and its edge */
+  padding: 0 14px;
+  font-size: var(--ctl-font);
+}
+
+/* Search box: same height and text as the buttons */
+#search {
+  min-height: var(--ctl-height);
+  font-size: var(--ctl-font);
+}
+
+/* -------- Page heading and headline cards: the same on every page -------- */
+
+/* Title and subtitle 4px apart, also when the heading has a switch beside it (Overview) */
+.ov-pagehead > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* KPI cards of the Expense / Income pages (.kpi) look like the cards of
+   Overview, Market and Net worth (.ov-kpi): same label, figure and height */
+.kpi-label,
+.ov-kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.kpi b,
+.ov-kpi b {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  margin: 8px 0 4px;
+}
+
+.kpi,
+.ov-kpi {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Smaller screens: the figures a little smaller, the same on every page */
+@media (max-width: 700px) {
+  .kpis,
+  .ov-kpis,
+  .mk-kpis {
+    gap: 9px;
+  }
+
+  .kpi b,
+  .ov-kpi b {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 420px) {
+  .kpi,
+  .ov-kpi {
+    padding: 11px;
+  }
+
+  .kpi b,
+  .ov-kpi b {
+    font-size: 18px;
+  }
+}
+
+/* Desktop: every headline card the same height, with or without a line
+   under its figure (the Expense / Income cards have none) */
+@media (min-width: 701px) {
+  .kpi,
+  .ov-kpi {
+    min-height: 110px;
+  }
+}
