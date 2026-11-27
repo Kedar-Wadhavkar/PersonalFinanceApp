@@ -1,0 +1,68 @@
+name: PR preview (one-file download)
+
+# Builds the app into ONE self-contained index.html for every pull request, so
+# a change can be tried before it is merged: download, unzip, double-click.
+# It never deploys anything: the live site only changes from deploy.yml on main.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write # to post / update the download comment
+
+# A newer push to the same pull request replaces a running preview build
+concurrency:
+  group: preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:preview
+
+      - id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-preview-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}
+          path: |
+            dist-preview/index.html
+            dist-preview/sample-workbook.xlsx
+            dist-preview/icons/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Comment the download link on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            const marker = "<!-- finance-preview -->";
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              marker,
+              `### Preview of this pull request (commit ${sha})`,
+              "",
+              `**[Download the preview (zip)](${process.env.ARTIFACT_URL})** · [build run](${run})`,
+              "",
+              "Unzip it and double-click `index.html`. No install, no server; it opens in your browser and reads your workbook only on this device.",
+              "You need to be signed in to GitHub to download. The file is kept for 30 days and is replaced by each new push.",
+            ].join("\n");
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const old = comments.find((c) => c.body?.includes(marker));
+            if (old) await github.rest.issues.updateComment({ owner, repo, comment_id: old.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
