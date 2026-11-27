@@ -7,7 +7,8 @@ Personal Finance Analytics: an offline, browser-based dashboard built from one E
 - **Overview**: income vs expense, savings, cumulative savings, expense cover
 - **Expense** and **Income**: KPIs, monthly trends, category donuts, heatmap, comparisons, searchable table
 - **Market**: investments from an order log and holdings/prices sheet (calendar, treemap, invested vs current, buy history)
-- Coming later: Net worth, Loans, Budgets
+- **Net worth**: assets minus debts month by month, from an Accounts sheet plus the market file (stacked monthly chart, what you own and owe, what changed and how much was saved, accounts table)
+- Coming later: Loans, Budgets
 
 ## Live site
 
@@ -58,8 +59,10 @@ so a failing test stops the site from updating.
 
 ## Workbook format
 
-Sheets: `Expense`, `Income`, `Expense_Settings`, `Income_Settings`.
+Sheets: `Expense`, `Income`, `Accounts`, `Expense_Settings`, `Income_Settings`.
 Income columns: Date, Particulars, Currency, Amount, Principle, Category, Mode.
+
+Accounts columns: Date, Account, Type, Balance, optional Currency. Add one row per account each time you note its balance, usually at the month end; a month without a row keeps the last balance. Type Loan or Card (also credit card, mortgage, debt) marks a debt, which is subtracted whatever its sign. Bank, Cash, Wallet, FD and RD are shown as cash and bank; any other type is another asset. The market file is added as an asset: at today's prices for the current month, and at the amount invested for earlier months, because it has no price history.
 
 Market tables are found by their headings: orders (Date, Order, Holding, Units, UnitAvg), holdings (Holding, LTP, Category, Sector, SubSector) and optional dividends (Date, Holding, Amount).
 
