@@ -742,17 +742,18 @@ function mkLayoutTreemap(s: MarketSummary): void {
 
 /* ---- Invested vs current value per holding ---- */
 
-// Card shell: title, Instrument filter row, the legend under it and the chart.
+// Card shell: title, Instrument filter row, the chart and, under it, the legend.
 function mkBarsHtml(): string {
   return `<div><div class="graphtitle"><b>Invested vs current value</b></div><div class="small">Per holding, largest investment first</div></div>
     ${mkInstFilterHtml(mkBarsInst)}
-    <div class="mk-togglerow mk-keyrow"><div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div></div>
-    <div id="mkvBody" class="ov-scroll"></div>`;
+    <div id="mkvBody" class="ov-scroll mk-vscroll"></div>
+    <div class="mk-togglerow mk-keyrow"><div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div></div>`;
 }
 
 // The chart has a fixed total height. Holding names are slanted like the Expense
 // charts; the longer the longest name, the more of that height they take from the
-// bars (the block itself never grows).
+// bars (the block itself never grows). A left axis (0, 25, 50, 75, 100% of the
+// largest value) and light gridlines are drawn like the Expense breakdown.
 const MK_BARS_HEIGHT = 340;
 function drawMkBars(): void {
   const list = [...mkFiltered(marketSummary(), mkBarsInst)].sort((a, b) => b.invested - a.invested);
@@ -764,6 +765,8 @@ function drawMkBars(): void {
   const labW = Math.min(120, Math.max(...list.map((h) => h.name.length)) * 6.4 + 4); // name length on the slant, px
   const band = Math.round(labW * 0.7071 + 18);
   const plot = Math.max(120, MK_BARS_HEIGHT - band);
+  const axisW = Math.max(52, Math.round(labW * 0.7071) - 6); // the first name slants out to the left, under nothing
+  const axis = [1, 0.75, 0.5, 0.25, 0].map((p) => `<span class="axis-val" style="top:${(1 - p) * 100}%">${p ? esc(moneyShort(top * p)) : "0"}</span>`).join("");
   const bars = list
     .map(
       (h) => `<button type="button" class="mk-col" data-holding="${esc(h.name)}" title="${esc(`${h.name}\nInvested ${money(h.invested)}\nCurrent value ${money(h.current)}\n${mkSigned(h.pnl)} (${mkSignPct(h.pct)})`)}">
@@ -772,7 +775,7 @@ function drawMkBars(): void {
       </button>`,
     )
     .join("");
-  $("mkvBody").innerHTML = `<div class="mk-cols" style="--plot:${plot}px;--band:${band}px;--labw:${Math.round(labW)}px;--padl:${Math.round(labW * 0.7071)}px">${bars}</div>`;
+  $("mkvBody").innerHTML = `<div class="mk-cols" style="--plot:${plot}px;--band:${band}px;--labw:${Math.round(labW)}px;--axisw:${axisW}px"><div class="mk-yaxis" aria-hidden="true">${axis}</div>${bars}</div>`;
 }
 
 /* ---- Holdings table ---- */
@@ -1130,7 +1133,7 @@ function mkDividendsHtml(): string {
         <button type="button" data-div-by="month" class="${byMonth ? "on" : ""}" aria-pressed="${byMonth}">Month › Holding</button>
         <button type="button" data-div-by="holding" class="${byMonth ? "" : "on"}" aria-pressed="${!byMonth}">Holding › Month</button>
     </div></div>
-    <div id="mkdBody" class="mk-scroll"></div>`;
+    <div id="mkdBody" class="mk-hbody"></div>`;
 }
 
 function setupMkDividends(): void {
@@ -1216,11 +1219,11 @@ function drawMkDividends(): void {
       for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild" title="${esc(label(c))}">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
-  box.innerHTML = `<table class="mk-table mk-dtable">
+  box.innerHTML = `<div class="mk-scroll"><table class="mk-table mk-dtable">
       <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>Total</td>${cells(grand)}</tr></tfoot>
-    </table>${
+    </table></div>${
       skipped ? `<div class="small mk-foot">${skipped} Income row${skipped === 1 ? "" : "s"} with Category Dividend ${skipped === 1 ? "was" : "were"} skipped: Particulars must read Dividend: HOLDING.</div>` : ""
     }`;
 }

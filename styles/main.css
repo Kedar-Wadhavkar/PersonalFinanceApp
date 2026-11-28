@@ -2776,6 +2776,7 @@ main.wrap[hidden] {
 
 .mk-keyrow {
   justify-content: flex-start;
+  margin-top: 8px;
 }
 
 .mk-scroll .mk-table thead th {
@@ -2929,11 +2930,39 @@ main.wrap[hidden] {
 /* Invested vs current bars */
 .mk-cols {
   display: grid;
+  grid-template-columns: var(--axisw, 52px);
   grid-auto-flow: column;
   grid-auto-columns: minmax(34px, 1fr);
-  gap: 4px;
+  gap: 0;
   min-width: max-content;
-  padding-left: var(--padl, 0);
+  padding-top: 8px; /* room for the top axis value */
+}
+
+/* Left value axis: stays while the chart scrolls sideways. Only as tall as the
+   bars, so the slanted names under it are never covered. */
+.mk-yaxis {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  height: var(--plot, 260px);
+  background: #fff;
+  background-image: linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 25%, 0 50%, 0 75%, 0 100%;
+}
+
+.mk-yaxis .axis-val {
+  right: 6px;
+}
+
+.mk-vscroll {
+  scrollbar-width: none; /* hidden, scrolling still works */
+  margin-top: 10px;
+}
+
+.mk-vscroll::-webkit-scrollbar {
+  display: none;
 }
 
 .mk-col {
@@ -2955,8 +2984,15 @@ main.wrap[hidden] {
 .mk-colbars {
   display: flex;
   align-items: flex-end;
+  justify-content: center;
   gap: 2px;
+  width: 100%;
   height: var(--plot, 260px);
+  /* light lines at 0, 25, 50, 75 and 100%, edge to edge across the columns */
+  background-image: linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 25%, 0 50%, 0 75%, 0 100%;
 }
 
 .mk-bar {
