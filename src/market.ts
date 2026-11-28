@@ -742,17 +742,18 @@ function mkLayoutTreemap(s: MarketSummary): void {
 
 /* ---- Invested vs current value per holding ---- */
 
-// Card shell: title, Instrument filter row, the legend under it and the chart.
+// Card shell: title, Instrument filter row, the chart and, under it, the legend.
 function mkBarsHtml(): string {
   return `<div><div class="graphtitle"><b>Invested vs current value</b></div><div class="small">Per holding, largest investment first</div></div>
     ${mkInstFilterHtml(mkBarsInst)}
-    <div class="mk-togglerow mk-keyrow"><div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div></div>
-    <div id="mkvBody" class="ov-scroll"></div>`;
+    <div id="mkvBody" class="ov-scroll mk-vscroll"></div>
+    <div class="mk-togglerow mk-keyrow"><div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div></div>`;
 }
 
 // The chart has a fixed total height. Holding names are slanted like the Expense
 // charts; the longer the longest name, the more of that height they take from the
-// bars (the block itself never grows).
+// bars (the block itself never grows). A left axis (0, 25, 50, 75, 100% of the
+// largest value) and light gridlines are drawn like the Expense breakdown.
 const MK_BARS_HEIGHT = 340;
 function drawMkBars(): void {
   const list = [...mkFiltered(marketSummary(), mkBarsInst)].sort((a, b) => b.invested - a.invested);
@@ -764,6 +765,8 @@ function drawMkBars(): void {
   const labW = Math.min(120, Math.max(...list.map((h) => h.name.length)) * 6.4 + 4); // name length on the slant, px
   const band = Math.round(labW * 0.7071 + 18);
   const plot = Math.max(120, MK_BARS_HEIGHT - band);
+  const axisW = Math.max(52, Math.round(labW * 0.7071) - 6); // the first name slants out to the left, under nothing
+  const axis = [1, 0.75, 0.5, 0.25, 0].map((p) => `<span class="axis-val" style="top:${(1 - p) * 100}%">${p ? esc(moneyShort(top * p)) : "0"}</span>`).join("");
   const bars = list
     .map(
       (h) => `<button type="button" class="mk-col" data-holding="${esc(h.name)}" title="${esc(`${h.name}\nInvested ${money(h.invested)}\nCurrent value ${money(h.current)}\n${mkSigned(h.pnl)} (${mkSignPct(h.pct)})`)}">
@@ -772,7 +775,7 @@ function drawMkBars(): void {
       </button>`,
     )
     .join("");
-  $("mkvBody").innerHTML = `<div class="mk-cols" style="--plot:${plot}px;--band:${band}px;--labw:${Math.round(labW)}px;--padl:${Math.round(labW * 0.7071)}px">${bars}</div>`;
+  $("mkvBody").innerHTML = `<div class="mk-cols" style="--plot:${plot}px;--band:${band}px;--labw:${Math.round(labW)}px;--axisw:${axisW}px"><div class="mk-yaxis" aria-hidden="true">${axis}</div>${bars}</div>`;
 }
 
 /* ---- Holdings table ---- */
@@ -840,6 +843,9 @@ function drawMkTable(): void {
   $("mkhBody").innerHTML = mkTableBodyHtml(marketSummary(), mkhMenu ? mkhMenu.set() : null);
 }
 
+// The holdings table shows plain numbers: no currency symbol
+const mkPlain = (text: string): string => text.replace(/[^\d.,+\-−]/g, "");
+
 function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): string {
   const key = mkState.sortKey as keyof Holding;
   const shown = instruments ? s.held.filter((h) => instruments.has(h.category)) : s.held;
@@ -864,11 +870,11 @@ function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): str
       case "qty":
         return esc(Math.round(v).toLocaleString(CONFIG.locale)); // whole units in this table
       case "price":
-        return v === null ? `<span class="small">no price</span>` : esc(mkPrice(v));
+        return v === null ? `<span class="small">no price</span>` : esc(mkPlain(mkPrice(v)));
       case "money":
-        return esc(money(v));
+        return esc(mkPlain(money(v)));
       case "signed":
-        return `<span class="${mkCls(v)}">${esc(mkSigned(v))}</span>`;
+        return `<span class="${mkCls(v)}">${esc(mkPlain(mkSigned(v)))}</span>`;
       case "pct":
         return v === null ? "–" : `<span class="${mkPctCls(v)}">${esc(mkSignPct(v))}</span>`;
       case "share":
@@ -903,7 +909,7 @@ function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): str
   return `<div class="mk-tablewrap"><table class="mk-table">
       <thead><tr>${head}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(money(invested))}</td><td></td><td class="num">${esc(money(current))}</td><td class="num ${mkCls(pnl)}">${esc(mkSigned(pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(xirr))}</td><td class="num">${esc(mkPct(share))}</td><td></td></tr></tfoot>
+      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(mkPlain(money(invested)))}</td><td></td><td class="num">${esc(mkPlain(money(current)))}</td><td class="num ${mkCls(pnl)}">${esc(mkPlain(mkSigned(pnl)))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(xirr))}</td><td class="num">${esc(mkPct(share))}</td><td></td></tr></tfoot>
     </table></div>`;
 }
 
@@ -1037,11 +1043,9 @@ function mkHistoryChart(list: MarketOrder[]): string {
   if (!list.length) return "";
   const W = 760;
   const H = 300;
-  const L = 64;
-  const R = 44;
+  const R = 36;
   const T = 14;
   const B = 34;
-  const pw = W - L - R;
   const ph = H - T - B;
   const prices = list.map((o) => o.price);
   let pMin = Math.min(...prices);
@@ -1050,6 +1054,9 @@ function mkHistoryChart(list: MarketOrder[]): string {
   pMin = Math.max(0, pMin - pad);
   pMax += pad;
   const qMax = Math.max(...list.map((o) => o.units)) * 1.1;
+  // Left margin just wide enough for the price labels (no empty strip)
+  const L = Math.max(...[0, 1, 2, 3, 4].map((k) => moneyShort(pMax - ((pMax - pMin) * k) / 4).length)) * 6.2 + 10;
+  const pw = W - L - R;
   const step = pw / list.length;
   const xOf = (i: number) => L + step * (i + 0.5);
   const yP = (p: number) => T + ph - ((p - pMin) / (pMax - pMin)) * ph;
@@ -1062,7 +1069,7 @@ function mkHistoryChart(list: MarketOrder[]): string {
     const q = qMax - (qMax * k) / 4;
     svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#e2e8f0"></line>`;
     svg += `<text x="${L - 6}" y="${y + 4}" text-anchor="end" class="mk-axis">${esc(moneyShort(p))}</text>`;
-    svg += `<text x="${W - R + 6}" y="${y + 4}" class="mk-axis">${esc(mkQty(Math.round(q * 10) / 10))}</text>`;
+    svg += `<text x="${W - R + 6}" y="${y + 4}" class="mk-axis">${esc(mkQty(Math.round(q)))}</text>`;
   }
   list.forEach((o, i) => {
     const y = yQ(o.units);
@@ -1080,8 +1087,8 @@ function mkHistoryChart(list: MarketOrder[]): string {
   list.forEach((o, i) => {
     if (i % every === 0) svg += `<text x="${xOf(i).toFixed(1)}" y="${H - 12}" text-anchor="middle" class="mk-axis">${esc(`${CONFIG.months[Number(o.date.slice(5, 7)) - 1]} ${o.date.slice(2, 4)}`)}</text>`;
   });
-  return `<div class="ov-key mk-hkey"><span><span class="ov-sw" style="background:#f97316"></span>Price paid (left)</span><span><span class="ov-sw" style="background:#fcd34d"></span>Units bought (right)</span></div>
-    <svg viewBox="0 0 ${W} ${H}" class="mk-hsvg" role="img" aria-label="Price paid and units bought per order">${svg}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="mk-hsvg" role="img" aria-label="Price paid and units bought per order">${svg}</svg>
+    <div class="ov-key mk-hkey"><span><span class="ov-sw" style="background:#f97316"></span>Price paid (left)</span><span><span class="ov-sw" style="background:#fcd34d"></span>Units bought (right)</span></div>`;
 }
 
 /* ---- Dividends ---- */
@@ -1130,7 +1137,7 @@ function mkDividendsHtml(): string {
         <button type="button" data-div-by="month" class="${byMonth ? "on" : ""}" aria-pressed="${byMonth}">Month › Holding</button>
         <button type="button" data-div-by="holding" class="${byMonth ? "" : "on"}" aria-pressed="${!byMonth}">Holding › Month</button>
     </div></div>
-    <div id="mkdBody" class="mk-scroll"></div>`;
+    <div id="mkdBody" class="mk-hbody"></div>`;
 }
 
 function setupMkDividends(): void {
@@ -1216,11 +1223,11 @@ function drawMkDividends(): void {
       for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild" title="${esc(label(c))}">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
-  box.innerHTML = `<table class="mk-table mk-dtable">
+  box.innerHTML = `<div class="mk-scroll"><table class="mk-table mk-dtable">
       <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr><td>Total</td>${cells(grand)}</tr></tfoot>
-    </table>${
+    </table></div>${
       skipped ? `<div class="small mk-foot">${skipped} Income row${skipped === 1 ? "" : "s"} with Category Dividend ${skipped === 1 ? "was" : "were"} skipped: Particulars must read Dividend: HOLDING.</div>` : ""
     }`;
 }
