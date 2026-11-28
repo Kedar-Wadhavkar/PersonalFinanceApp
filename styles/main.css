@@ -2774,7 +2774,8 @@ main.wrap[hidden] {
   margin-top: 10px;
 }
 
-.mk-scroll .mk-table thead th {
+.mk-scroll .mk-table thead th,
+.mk-dbody .mk-table thead th {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -3068,6 +3069,10 @@ main.wrap[hidden] {
 .mk-hkey {
   margin-top: 6px;
   margin-bottom: 4px;
+}
+
+.mk-hkey .legend-btn {
+  cursor: default;
 }
 
 .mk-hsvg {
@@ -4229,4 +4234,56 @@ main.wrap[hidden] {
 
 #mkBarsCard .legend-btn {
   cursor: default;
+}
+
+/* Dividends: rows scroll, the Total stays under them (two tables, same columns) */
+.mk-dwrap {
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mk-dinner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mk-dbody {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.mk-dfoot {
+  flex: none;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  border-top: 2px solid #dbe2ea;
+  background: #f1f5f9;
+}
+
+.mk-dtable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* Numbers are never cut with "…" */
+.mk-dtable th,
+.mk-dtable td {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.mk-dfoot .mk-table td {
+  background: #f1f5f9;
+  font-weight: 700;
+  border-bottom: 0;
 }

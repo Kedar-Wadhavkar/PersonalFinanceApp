@@ -771,6 +771,9 @@ function drawMkBars(): void {
     })
     .join("");
   box.style.setProperty("--cols", String(Math.min(12, Math.max(list.length, 6))));
+  // The axis is only as wide as its values need (the Expense bars keep a fixed 48px)
+  const axisW = Math.max(34, Math.max(...[1, 0.75, 0.5, 0.25].map((p) => moneyShort(top * p).length)) * 6 + 12);
+  box.style.setProperty("--axis", `${axisW}px`);
   box.innerHTML = `<div class="axis-col yaxis"><div class="axis-plot">${axis}</div></div>${cols}<div class="axis-col filler"><div class="axis-plot"></div></div>`;
 }
 
@@ -1051,7 +1054,12 @@ function mkHistoryChart(list: MarketOrder[]): string {
   pMax += pad;
   const qMax = Math.max(...list.map((o) => o.units)) * 1.1;
   // Left margin just wide enough for the price labels (no empty strip)
-  const L = Math.max(...[0, 1, 2, 3, 4].map((k) => moneyShort(pMax - ((pMax - pMin) * k) / 4).length)) * 6.2 + 10;
+  // Price labels: the short form (₹2.6K) unless neighbouring labels would read the same
+  // (a narrow price range); then whole rupees, and two decimals for a tiny range.
+  const ticks = [0, 1, 2, 3, 4].map((k) => pMax - ((pMax - pMin) * k) / 4);
+  const labelSets = [ticks.map((t) => moneyShort(t)), ticks.map((t) => Math.round(t).toLocaleString(CONFIG.locale)), ticks.map((t) => t.toLocaleString(CONFIG.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))];
+  const priceLabels = labelSets.find((set) => new Set(set).size === set.length) ?? labelSets[2]!;
+  const L = Math.max(...priceLabels.map((t) => t.length)) * 6.2 + 10;
   const pw = W - L - R;
   const step = pw / list.length;
   const xOf = (i: number) => L + step * (i + 0.5);
@@ -1061,10 +1069,9 @@ function mkHistoryChart(list: MarketOrder[]): string {
   let svg = "";
   for (let k = 0; k <= 4; k++) {
     const y = T + (ph * k) / 4;
-    const p = pMax - ((pMax - pMin) * k) / 4;
     const q = qMax - (qMax * k) / 4;
     svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#e2e8f0"></line>`;
-    svg += `<text x="${L - 6}" y="${y + 4}" text-anchor="end" class="mk-axis">${esc(moneyShort(p))}</text>`;
+    svg += `<text x="${L - 6}" y="${y + 4}" text-anchor="end" class="mk-axis">${esc(priceLabels[k]!)}</text>`;
     svg += `<text x="${W - R + 6}" y="${y + 4}" class="mk-axis">${esc(mkQty(Math.round(q)))}</text>`;
   }
   list.forEach((o, i) => {
@@ -1084,7 +1091,7 @@ function mkHistoryChart(list: MarketOrder[]): string {
     if (i % every === 0) svg += `<text x="${xOf(i).toFixed(1)}" y="${H - 12}" text-anchor="middle" class="mk-axis">${esc(`${CONFIG.months[Number(o.date.slice(5, 7)) - 1]} ${o.date.slice(2, 4)}`)}</text>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" class="mk-hsvg" role="img" aria-label="Price paid and units bought per order">${svg}</svg>
-    <div class="ov-key mk-hkey"><span><span class="ov-sw" style="background:#f97316"></span>Price paid (left)</span><span><span class="ov-sw" style="background:#fcd34d"></span>Units bought (right)</span></div>`;
+    <div class="legend mk-hkey"><span class="legend-btn"><span class="legend-swatch" style="background:#f97316"></span>Price paid (left)</span><span class="legend-btn"><span class="legend-swatch" style="background:#fcd34d"></span>Units bought (right)</span></div>`;
 }
 
 /* ---- Dividends ---- */
@@ -1219,11 +1226,18 @@ function drawMkDividends(): void {
       for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild" title="${esc(label(c))}">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
-  box.innerHTML = `<div class="mk-scroll"><table class="mk-table mk-dtable">
-      <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr><td>Total</td>${cells(grand)}</tr></tfoot>
-    </table></div>${
+  // Two tables with the same fixed column widths: the rows scroll in the first, the Total
+  // sits under them in the second. (A sticky Total inside the scrolling table drew rows
+  // under it on some screens.) Both sit in one wrapper that scrolls sideways when narrow.
+  const colgroup = `<colgroup><col style="width:130px">${years.map(() => "<col>").join("")}<col style="width:112px"></colgroup>`;
+  const minW = 130 + 112 + years.length * 92;
+  box.innerHTML = `<div class="mk-dwrap"><div class="mk-dinner" style="min-width:${minW}px">
+      <div class="mk-dbody"><table class="mk-table mk-dtable">${colgroup}
+        <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div class="mk-dfoot"><table class="mk-table mk-dtable">${colgroup}<tbody><tr><td>Total</td>${cells(grand)}</tr></tbody></table></div>
+    </div></div>${
       skipped ? `<div class="small mk-foot">${skipped} Income row${skipped === 1 ? "" : "s"} with Category Dividend ${skipped === 1 ? "was" : "were"} skipped: Particulars must read Dividend: HOLDING.</div>` : ""
     }`;
 }
