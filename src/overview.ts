@@ -383,6 +383,7 @@ const WIDE_PAGES: Record<WidePage, string> = { overview: "Overview", market: "Ma
 export function showPage(page: WidePage | null): void {
   activePage = page || activeModule;
   document.querySelector(".app")!.classList.toggle("is-wide", !!page);
+  (document.querySelector(".app") as HTMLElement).dataset.page = page ?? "";
   for (const key of Object.keys(WIDE_PAGES) as (keyof typeof WIDE_PAGES)[]) $(`${key}Page`).hidden = page !== key;
   $("modulePage").hidden = !!page;
   document.querySelectorAll<HTMLElement>(".side-item[data-page]").forEach((b) => {

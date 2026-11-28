@@ -2316,6 +2316,21 @@ main section[id] {
   display: none;
 }
 
+/* The Market page has its own "On this page" list */
+.app[data-page="market"] .side-onpage-market {
+  display: flex;
+}
+
+.side-onpage-market {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .app[data-page="market"] .side-onpage-market {
+    display: none;
+  }
+}
+
 .app.is-wide > main.ov-page {
   grid-column: 2 / -1;
   grid-row: 1 / span 2;
@@ -2705,7 +2720,7 @@ main.wrap[hidden] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .mk-pair > .card {
@@ -2754,7 +2769,13 @@ main.wrap[hidden] {
 .mk-togglerow {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  min-height: 36px;
   margin-top: 10px;
+}
+
+.mk-keyrow {
+  justify-content: flex-start;
 }
 
 .mk-scroll .mk-table thead th {
@@ -2912,16 +2933,16 @@ main.wrap[hidden] {
   grid-auto-columns: minmax(34px, 1fr);
   gap: 4px;
   min-width: max-content;
+  padding-left: var(--padl, 0);
 }
 
 .mk-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
   border: 0;
   background: transparent;
-  padding: 4px 0;
+  padding: 0;
   font: inherit;
   cursor: pointer;
   border-radius: 6px;
@@ -2935,7 +2956,7 @@ main.wrap[hidden] {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 260px;
+  height: var(--plot, 260px);
 }
 
 .mk-bar {
@@ -2956,15 +2977,28 @@ main.wrap[hidden] {
   background: #f59e0b;
 }
 
+/* Holding names slant at 45 degrees like the Expense charts: each name ends
+   under its bar and runs down to the left, inside a band whose height
+   (--band) follows the longest name. */
+.mk-colname {
+  position: relative;
+  width: 100%;
+  height: var(--band, 60px);
+}
+
 .mk-collabel {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 12px;
+  position: absolute;
+  top: 4px;
+  right: 50%;
+  max-width: var(--labw, 72px);
+  font-size: 11px;
+  line-height: 12px;
   color: #475569;
-  max-height: 120px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  transform-origin: 100% 0;
+  transform: rotate(-45deg);
 }
 
 /* Tables */
@@ -3279,6 +3313,7 @@ main.wrap[hidden] {
 /* A module page with no rows shows only its empty card (emptyState.ts) */
 .app.module-empty #modulePage > :not(.page-head):not(#err):not(#moduleEmpty),
 .app.module-empty .side-onpage,
+.app.module-empty .side-onpage-market,
 .app.module-empty .rail {
   display: none;
 }
@@ -4210,4 +4245,14 @@ main.wrap[hidden] {
   .ov-kpi {
     min-height: 110px;
   }
+}
+
+/* Jumping from "On this page" leaves a little air above the card */
+#mkTableCard,
+#mkCalendar,
+#mkTreeCard,
+#mkBarsCard,
+#mkHistory,
+#mkDividends {
+  scroll-margin-top: 12px;
 }
