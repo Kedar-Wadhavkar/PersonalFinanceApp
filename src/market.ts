@@ -1054,7 +1054,12 @@ function mkHistoryChart(list: MarketOrder[]): string {
   pMax += pad;
   const qMax = Math.max(...list.map((o) => o.units)) * 1.1;
   // Left margin just wide enough for the price labels (no empty strip)
-  const L = Math.max(...[0, 1, 2, 3, 4].map((k) => moneyShort(pMax - ((pMax - pMin) * k) / 4).length)) * 6.2 + 10;
+  // Price labels: the short form (₹2.6K) unless neighbouring labels would read the same
+  // (a narrow price range); then whole rupees, and two decimals for a tiny range.
+  const ticks = [0, 1, 2, 3, 4].map((k) => pMax - ((pMax - pMin) * k) / 4);
+  const labelSets = [ticks.map((t) => moneyShort(t)), ticks.map((t) => Math.round(t).toLocaleString(CONFIG.locale)), ticks.map((t) => t.toLocaleString(CONFIG.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))];
+  const priceLabels = labelSets.find((set) => new Set(set).size === set.length) ?? labelSets[2]!;
+  const L = Math.max(...priceLabels.map((t) => t.length)) * 6.2 + 10;
   const pw = W - L - R;
   const step = pw / list.length;
   const xOf = (i: number) => L + step * (i + 0.5);
@@ -1064,10 +1069,9 @@ function mkHistoryChart(list: MarketOrder[]): string {
   let svg = "";
   for (let k = 0; k <= 4; k++) {
     const y = T + (ph * k) / 4;
-    const p = pMax - ((pMax - pMin) * k) / 4;
     const q = qMax - (qMax * k) / 4;
     svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#e2e8f0"></line>`;
-    svg += `<text x="${L - 6}" y="${y + 4}" text-anchor="end" class="mk-axis">${esc(moneyShort(p))}</text>`;
+    svg += `<text x="${L - 6}" y="${y + 4}" text-anchor="end" class="mk-axis">${esc(priceLabels[k]!)}</text>`;
     svg += `<text x="${W - R + 6}" y="${y + 4}" class="mk-axis">${esc(mkQty(Math.round(q)))}</text>`;
   }
   list.forEach((o, i) => {
@@ -1087,7 +1091,7 @@ function mkHistoryChart(list: MarketOrder[]): string {
     if (i % every === 0) svg += `<text x="${xOf(i).toFixed(1)}" y="${H - 12}" text-anchor="middle" class="mk-axis">${esc(`${CONFIG.months[Number(o.date.slice(5, 7)) - 1]} ${o.date.slice(2, 4)}`)}</text>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" class="mk-hsvg" role="img" aria-label="Price paid and units bought per order">${svg}</svg>
-    <div class="ov-key mk-hkey"><span><span class="ov-sw" style="background:#f97316"></span>Price paid (left)</span><span><span class="ov-sw" style="background:#fcd34d"></span>Units bought (right)</span></div>`;
+    <div class="legend mk-hkey"><span class="legend-btn"><span class="legend-swatch" style="background:#f97316"></span>Price paid (left)</span><span class="legend-btn"><span class="legend-swatch" style="background:#fcd34d"></span>Units bought (right)</span></div>`;
 }
 
 /* ---- Dividends ---- */

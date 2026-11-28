@@ -3071,6 +3071,10 @@ main.wrap[hidden] {
   margin-bottom: 4px;
 }
 
+.mk-hkey .legend-btn {
+  cursor: default;
+}
+
 .mk-hsvg {
   display: block;
   width: 100%;
