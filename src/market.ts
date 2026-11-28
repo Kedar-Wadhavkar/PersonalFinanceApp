@@ -62,7 +62,6 @@ const mkCatColor = (c: string): string => MK_CATEGORY_COLORS[c] || "#64748b";
 
 export const mkState: {
   calYear: number | null;
-  category: string;
   treeBy: "invested" | "current";
   sortKey: string;
   sortDir: number;
@@ -72,7 +71,6 @@ export const mkState: {
   divOpen: Set<string>;
 } = {
   calYear: null,
-  category: "All", // bars + treemap filter
   treeBy: "invested", // "invested" | "current"
   sortKey: "current",
   sortDir: -1,
@@ -357,18 +355,21 @@ function renderMarket(): void {
     <section class="card card-gap" id="mkTableCard">${mkTableHtml()}</section>
     ${mkCalendar()}
     <div class="mk-pair">
-      <section class="card" id="mkTreeCard">${mkTreemapHtml(s)}</section>
-      <section class="card" id="mkBarsCard">${mkBarsHtml(s)}</section>
+      <section class="card" id="mkTreeCard">${mkTreemapHtml()}</section>
+      <section class="card" id="mkBarsCard">${mkBarsHtml()}</section>
     </div>
     <div class="mk-pair">
       <section class="card mk-fixed" id="mkHistory">${mkHistoryHtml()}</section>
       <section class="card mk-fixed" id="mkDividends">${mkDividendsHtml()}</section>
     </div>`;
+  mkSetupInst(mkTreeInst, drawMkTree);
+  mkSetupInst(mkBarsInst, drawMkBars);
   setupMkCalendar();
   setupMkTableFilter();
   setupMkHistory();
   setupMkDividends();
-  mkLayoutTreemap(s);
+  drawMkTree();
+  drawMkBars();
 }
 
 function mkCards(s: MarketSummary): string {
@@ -575,29 +576,79 @@ function drawMkCalendar(): void {
   box.innerHTML = html;
 }
 
-/* ---- Instrument chips (treemap + bars) ---- */
+/* ---- Instrument filter (Portfolio map and Invested vs current each have their own) ---- */
 
-function mkCategoryChips(s: MarketSummary): string {
-  const cats = ["All", ...new Set(s.held.map((h) => h.category))];
-  return `<div class="mk-chips" role="group" aria-label="Instrument">${cats
-    .map((c) => `<button type="button" class="mk-chip${c === mkState.category ? " on" : ""}" data-cat="${esc(c)}" aria-pressed="${c === mkState.category}">${c === "All" ? "All" : `<span class="ov-sw" style="background:${mkCatColor(c)}"></span>${esc(c)}`}</button>`)
-    .join("")}</div>`;
+interface MkInst {
+  prefix: string;
+  menu: MultiSelect | null;
+  choice: string[] | null; // ticked instruments, kept when the page is redrawn
+}
+const mkTreeInst: MkInst = { prefix: "mkt", menu: null, choice: null };
+const mkBarsInst: MkInst = { prefix: "mkv", menu: null, choice: null };
+
+const mkInstFilterHtml = (i: MkInst): string =>
+  `<div class="filters chart-filters">
+      <div class="field"><span class="small field-label" id="${i.prefix}InstLabel">Instrument</span>
+        <div id="${i.prefix}InstMulti" class="multi">
+          <button type="button" id="${i.prefix}InstToggle" aria-labelledby="${i.prefix}InstLabel ${i.prefix}InstToggle">All selected ▾</button>
+          <div id="${i.prefix}InstMenu" class="multi-menu"></div>
+        </div>
+      </div>
+      <button type="button" id="${i.prefix}Reset">Reset</button>
+    </div>`;
+
+function mkSetupInst(i: MkInst, onChange: () => void): void {
+  const values = [...new Set(marketSummary().held.map((h) => h.category))].sort((a, b) => a.localeCompare(b));
+  i.menu = createMultiSelect({
+    menuId: `${i.prefix}InstMenu`,
+    toggleId: `${i.prefix}InstToggle`,
+    cls: `${i.prefix}InstCheck`,
+    values,
+    onChange: () => {
+      i.choice = i.menu!.values();
+      onChange();
+    },
+  });
+  const kept = i.choice?.filter((v) => values.includes(v)) ?? [];
+  if (kept.length) i.menu.setValues(kept);
+  wireMultiToggles([`${i.prefix}InstMulti`]);
+  $(`${i.prefix}Reset`).onclick = () => {
+    i.choice = null;
+    mkSetupInst(i, onChange);
+    onChange();
+  };
 }
 
-const mkFiltered = (s: MarketSummary): Holding[] => (mkState.category === "All" ? s.held : s.held.filter((h) => h.category === mkState.category));
+const mkFiltered = (s: MarketSummary, i: MkInst): Holding[] => {
+  const on = i.menu?.set();
+  return on ? s.held.filter((h) => on.has(h.category)) : s.held;
+};
 
 /* ---- Treemap ---- */
 
-function mkTreemapHtml(s: MarketSummary): string {
-  return `<div class="ov-head">
-      <div><div class="graphtitle"><b>Portfolio map</b></div><div class="small">Each box is a holding, sized by its ${mkState.treeBy === "invested" ? "invested amount" : "current value"}. Click one to see its buys.</div></div>
-      <div class="ov-period" role="group" aria-label="Size by">
-        <button type="button" data-tree="invested" class="${mkState.treeBy === "invested" ? "on" : ""}">Invested</button>
-        <button type="button" data-tree="current" class="${mkState.treeBy === "current" ? "on" : ""}">Current value</button>
-      </div>
-    </div>
-    ${mkCategoryChips(s)}
+// Card shell: title, Instrument filter row, the Invested / Current value switch
+// under it (right-aligned, like Dividends) and the map. drawMkTree() fills it.
+function mkTreemapHtml(): string {
+  return `<div><div class="graphtitle"><b>Portfolio map</b></div><div class="small" id="mkTreeDesc"></div></div>
+    ${mkInstFilterHtml(mkTreeInst)}
+    <div class="mk-togglerow"><div class="ov-period" role="group" aria-label="Size by">
+        <button type="button" data-tree="invested">Invested</button>
+        <button type="button" data-tree="current">Current value</button>
+    </div></div>
     <div class="mk-tree" id="mkTree"></div>`;
+}
+
+function drawMkTree(): void {
+  const by = mkState.treeBy;
+  $("mkTreeDesc").textContent = `Each box is a holding, sized by its ${by === "invested" ? "invested amount" : "current value"}. Click one to see its buys.`;
+  $("mkTreeCard")
+    .querySelectorAll<HTMLElement>("[data-tree]")
+    .forEach((b) => {
+      const on = b.dataset.tree === by;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  mkLayoutTreemap(marketSummary());
 }
 
 // Squarified treemap: items [{value}] -> same items with x, y, w, h
@@ -665,7 +716,7 @@ function mkLayoutTreemap(s: MarketSummary): void {
   const W = box.clientWidth || 800;
   const H = W < 600 ? 420 : 380;
   box.style.height = `${H}px`;
-  const list = mkFiltered(s);
+  const list = mkFiltered(s, mkTreeInst);
   const total = list.reduce((t, h) => t + h[mkState.treeBy], 0);
   const rects = mkSquarify(
     list.map((h) => ({ item: h, value: h[mkState.treeBy] })),
@@ -691,23 +742,37 @@ function mkLayoutTreemap(s: MarketSummary): void {
 
 /* ---- Invested vs current value per holding ---- */
 
-function mkBarsHtml(s: MarketSummary): string {
-  const list = [...mkFiltered(s)].sort((a, b) => b.invested - a.invested);
+// Card shell: title, Instrument filter row, the legend under it and the chart.
+function mkBarsHtml(): string {
+  return `<div><div class="graphtitle"><b>Invested vs current value</b></div><div class="small">Per holding, largest investment first</div></div>
+    ${mkInstFilterHtml(mkBarsInst)}
+    <div class="mk-togglerow mk-keyrow"><div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div></div>
+    <div id="mkvBody" class="ov-scroll"></div>`;
+}
+
+// The chart has a fixed total height. Holding names are slanted like the Expense
+// charts; the longer the longest name, the more of that height they take from the
+// bars (the block itself never grows).
+const MK_BARS_HEIGHT = 340;
+function drawMkBars(): void {
+  const list = [...mkFiltered(marketSummary(), mkBarsInst)].sort((a, b) => b.invested - a.invested);
+  if (!list.length) {
+    $("mkvBody").innerHTML = `<div class="nodata small">No holdings for this choice.</div>`;
+    return;
+  }
   const top = Math.max(1, ...list.map((h) => Math.max(h.invested, h.current)));
+  const labW = Math.min(120, Math.max(...list.map((h) => h.name.length)) * 6.4 + 4); // name length on the slant, px
+  const band = Math.round(labW * 0.7071 + 18);
+  const plot = Math.max(120, MK_BARS_HEIGHT - band);
   const bars = list
     .map(
       (h) => `<button type="button" class="mk-col" data-holding="${esc(h.name)}" title="${esc(`${h.name}\nInvested ${money(h.invested)}\nCurrent value ${money(h.current)}\n${mkSigned(h.pnl)} (${mkSignPct(h.pct)})`)}">
         <span class="mk-colbars"><span class="mk-bar mk-b-inv" style="height:${((h.invested / top) * 100).toFixed(1)}%"></span><span class="mk-bar mk-b-cur ${h.pnl < 0 ? "down" : ""}" style="height:${((h.current / top) * 100).toFixed(1)}%"></span></span>
-        <span class="mk-collabel">${esc(h.name)}</span>
+        <span class="mk-colname"><span class="mk-collabel">${esc(h.name)}</span></span>
       </button>`,
     )
     .join("");
-  return `<div class="ov-head">
-      <div><div class="graphtitle"><b>Invested vs current value</b></div><div class="small">Per holding, largest investment first</div></div>
-      <div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div>
-    </div>
-    ${mkCategoryChips(s)}
-    <div class="ov-scroll"><div class="mk-cols">${bars}</div></div>`;
+  $("mkvBody").innerHTML = `<div class="mk-cols" style="--plot:${plot}px;--band:${band}px;--labw:${Math.round(labW)}px;--padl:${Math.round(labW * 0.7071)}px">${bars}</div>`;
 }
 
 /* ---- Holdings table ---- */
@@ -853,7 +918,7 @@ function mkHistoryHtml(): string {
     `<div id="mkb${id}Menu" class="multi-menu"></div></div></div>`;
   return `<div><div class="graphtitle"><b>Buy history</b></div><div class="small">Every order of one holding. "vs last buy" is the price change from the buy before it: red = paid more, green = paid less.</div></div>
     <div class="filters chart-filters">${field("Year", "Year")}${field("Hold", "Holding")}${field("Order", "Order")}<button type="button" id="mkbReset">Reset</button></div>
-    <div id="mkbBody" class="mk-scroll"></div>`;
+    <div id="mkbBody" class="mk-hbody"></div>`;
 }
 
 let mkbYearMenu: MultiSelect | null = null;
@@ -959,12 +1024,12 @@ function drawMkHistory(): void {
         .join("");
     }
   }
-  box.innerHTML = `${mkHistoryChart(list)}
-    <table class="mk-table mk-htable-sticky">
+  box.innerHTML = `<div class="mk-hchart">${mkHistoryChart(list)}</div>
+    <div class="mk-scroll"><table class="mk-table mk-htable-sticky">
       <thead><tr><th>Date</th><th class="num">Qty</th><th class="num">Unit avg</th><th class="num">vs last buy</th></tr>
         <tr class="mk-pin mk-h-total"><th>${esc(name)}</th>${sums(list).replace(/<td/g, "<th").replace(/<\/td>/g, "</th>")}</tr></thead>
       <tbody>${rowsHtml}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
 // Bars = units bought (right axis), line = price paid (left axis)
@@ -1206,17 +1271,9 @@ export function setupMarket(): void {
       $("mkDayInfo").innerHTML = `<b>${esc(mkDate(d.day))}</b>: ${list
         .map((o) => `${esc(o.type)} ${esc(mkQty(o.units))} <button type="button" class="mk-link" data-holding="${esc(o.holding)}">${esc(o.holding)}</button> at ${esc(mkPrice(o.price))} (${esc(money(o.value))})`)
         .join("; ")}`;
-    } else if (d.cat) {
-      mkState.category = d.cat;
-      const s = marketSummary();
-      $("mkTreeCard").innerHTML = mkTreemapHtml(s);
-      $("mkBarsCard").innerHTML = mkBarsHtml(s);
-      mkLayoutTreemap(s);
     } else if (d.tree) {
       mkState.treeBy = d.tree as "invested" | "current";
-      const s = marketSummary();
-      $("mkTreeCard").innerHTML = mkTreemapHtml(s);
-      mkLayoutTreemap(s);
+      drawMkTree();
     } else if (d.sort) {
       if (mkState.sortKey === d.sort) mkState.sortDir *= -1;
       else {
