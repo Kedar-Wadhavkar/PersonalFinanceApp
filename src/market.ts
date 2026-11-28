@@ -843,6 +843,9 @@ function drawMkTable(): void {
   $("mkhBody").innerHTML = mkTableBodyHtml(marketSummary(), mkhMenu ? mkhMenu.set() : null);
 }
 
+// The holdings table shows plain numbers: no currency symbol
+const mkPlain = (text: string): string => text.replace(/[^\d.,+\-−]/g, "");
+
 function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): string {
   const key = mkState.sortKey as keyof Holding;
   const shown = instruments ? s.held.filter((h) => instruments.has(h.category)) : s.held;
@@ -867,11 +870,11 @@ function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): str
       case "qty":
         return esc(Math.round(v).toLocaleString(CONFIG.locale)); // whole units in this table
       case "price":
-        return v === null ? `<span class="small">no price</span>` : esc(mkPrice(v));
+        return v === null ? `<span class="small">no price</span>` : esc(mkPlain(mkPrice(v)));
       case "money":
-        return esc(money(v));
+        return esc(mkPlain(money(v)));
       case "signed":
-        return `<span class="${mkCls(v)}">${esc(mkSigned(v))}</span>`;
+        return `<span class="${mkCls(v)}">${esc(mkPlain(mkSigned(v)))}</span>`;
       case "pct":
         return v === null ? "–" : `<span class="${mkPctCls(v)}">${esc(mkSignPct(v))}</span>`;
       case "share":
@@ -906,7 +909,7 @@ function mkTableBodyHtml(s: MarketSummary, instruments: Set<string> | null): str
   return `<div class="mk-tablewrap"><table class="mk-table">
       <thead><tr>${head}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(money(invested))}</td><td></td><td class="num">${esc(money(current))}</td><td class="num ${mkCls(pnl)}">${esc(mkSigned(pnl))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(xirr))}</td><td class="num">${esc(mkPct(share))}</td><td></td></tr></tfoot>
+      <tfoot><tr><td>Total</td><td></td><td></td><td class="num">${esc(mkPlain(money(invested)))}</td><td></td><td class="num">${esc(mkPlain(money(current)))}</td><td class="num ${mkCls(pnl)}">${esc(mkPlain(mkSigned(pnl)))}</td><td class="num ${mkPctCls(p)}">${esc(mkSignPct(p))}</td><td class="num">${esc(mkPct(xirr))}</td><td class="num">${esc(mkPct(share))}</td><td></td></tr></tfoot>
     </table></div>`;
 }
 
