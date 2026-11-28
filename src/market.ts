@@ -853,7 +853,7 @@ function mkHistoryHtml(): string {
     `<div id="mkb${id}Menu" class="multi-menu"></div></div></div>`;
   return `<div><div class="graphtitle"><b>Buy history</b></div><div class="small">Every order of one holding. "vs last buy" is the price change from the buy before it: red = paid more, green = paid less.</div></div>
     <div class="filters chart-filters">${field("Year", "Year")}${field("Hold", "Holding")}${field("Order", "Order")}<button type="button" id="mkbReset">Reset</button></div>
-    <div id="mkbBody" class="mk-scroll"></div>`;
+    <div id="mkbBody" class="mk-hbody"></div>`;
 }
 
 let mkbYearMenu: MultiSelect | null = null;
@@ -959,12 +959,12 @@ function drawMkHistory(): void {
         .join("");
     }
   }
-  box.innerHTML = `${mkHistoryChart(list)}
-    <table class="mk-table mk-htable-sticky">
+  box.innerHTML = `<div class="mk-hchart">${mkHistoryChart(list)}</div>
+    <div class="mk-scroll"><table class="mk-table mk-htable-sticky">
       <thead><tr><th>Date</th><th class="num">Qty</th><th class="num">Unit avg</th><th class="num">vs last buy</th></tr>
         <tr class="mk-pin mk-h-total"><th>${esc(name)}</th>${sums(list).replace(/<td/g, "<th").replace(/<\/td>/g, "</th>")}</tr></thead>
       <tbody>${rowsHtml}</tbody>
-    </table>`;
+    </table></div>`;
 }
 
 // Bars = units bought (right axis), line = price paid (left axis)

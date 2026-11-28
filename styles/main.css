@@ -2721,7 +2721,7 @@ main.wrap[hidden] {
 /* Buy history and Dividends: the same height, the body scrolls inside the
    card (title and filters stay where they are) */
 .mk-pair > .mk-fixed {
-  height: 640px;
+  height: 720px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -2732,6 +2732,23 @@ main.wrap[hidden] {
   min-height: 0;
   overflow: auto;
   margin-top: 10px;
+}
+
+/* Buy history: the graph stays, only the table under it scrolls */
+.mk-hbody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.mk-hbody > .mk-hchart {
+  flex: none;
+}
+
+.mk-hbody > .mk-scroll {
+  margin-top: 8px;
 }
 
 .mk-togglerow {
