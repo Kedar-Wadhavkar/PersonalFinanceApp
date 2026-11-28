@@ -1040,11 +1040,9 @@ function mkHistoryChart(list: MarketOrder[]): string {
   if (!list.length) return "";
   const W = 760;
   const H = 300;
-  const L = 64;
-  const R = 44;
+  const R = 36;
   const T = 14;
   const B = 34;
-  const pw = W - L - R;
   const ph = H - T - B;
   const prices = list.map((o) => o.price);
   let pMin = Math.min(...prices);
@@ -1053,6 +1051,9 @@ function mkHistoryChart(list: MarketOrder[]): string {
   pMin = Math.max(0, pMin - pad);
   pMax += pad;
   const qMax = Math.max(...list.map((o) => o.units)) * 1.1;
+  // Left margin just wide enough for the price labels (no empty strip)
+  const L = Math.max(...[0, 1, 2, 3, 4].map((k) => moneyShort(pMax - ((pMax - pMin) * k) / 4).length)) * 6.2 + 10;
+  const pw = W - L - R;
   const step = pw / list.length;
   const xOf = (i: number) => L + step * (i + 0.5);
   const yP = (p: number) => T + ph - ((p - pMin) / (pMax - pMin)) * ph;
@@ -1065,7 +1066,7 @@ function mkHistoryChart(list: MarketOrder[]): string {
     const q = qMax - (qMax * k) / 4;
     svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#e2e8f0"></line>`;
     svg += `<text x="${L - 6}" y="${y + 4}" text-anchor="end" class="mk-axis">${esc(moneyShort(p))}</text>`;
-    svg += `<text x="${W - R + 6}" y="${y + 4}" class="mk-axis">${esc(mkQty(Math.round(q * 10) / 10))}</text>`;
+    svg += `<text x="${W - R + 6}" y="${y + 4}" class="mk-axis">${esc(mkQty(Math.round(q)))}</text>`;
   }
   list.forEach((o, i) => {
     const y = yQ(o.units);
@@ -1083,8 +1084,8 @@ function mkHistoryChart(list: MarketOrder[]): string {
   list.forEach((o, i) => {
     if (i % every === 0) svg += `<text x="${xOf(i).toFixed(1)}" y="${H - 12}" text-anchor="middle" class="mk-axis">${esc(`${CONFIG.months[Number(o.date.slice(5, 7)) - 1]} ${o.date.slice(2, 4)}`)}</text>`;
   });
-  return `<div class="ov-key mk-hkey"><span><span class="ov-sw" style="background:#f97316"></span>Price paid (left)</span><span><span class="ov-sw" style="background:#fcd34d"></span>Units bought (right)</span></div>
-    <svg viewBox="0 0 ${W} ${H}" class="mk-hsvg" role="img" aria-label="Price paid and units bought per order">${svg}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="mk-hsvg" role="img" aria-label="Price paid and units bought per order">${svg}</svg>
+    <div class="ov-key mk-hkey"><span><span class="ov-sw" style="background:#f97316"></span>Price paid (left)</span><span><span class="ov-sw" style="background:#fcd34d"></span>Units bought (right)</span></div>`;
 }
 
 /* ---- Dividends ---- */

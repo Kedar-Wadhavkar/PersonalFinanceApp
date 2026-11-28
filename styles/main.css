@@ -3133,7 +3133,8 @@ main.wrap[hidden] {
 }
 
 .mk-hkey {
-  margin-top: 12px;
+  margin-top: 6px;
+  margin-bottom: 4px;
 }
 
 .mk-hsvg {
