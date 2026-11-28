@@ -454,3 +454,60 @@ describe("the what-if simulator on the Net worth page", () => {
     expect(document.querySelector(`#simChips .sim-chip[data-cat='${name}']`)!.getAttribute("aria-pressed")).toBe("true");
   });
 });
+
+describe("Refresh (the same files read again)", () => {
+  it("puts the filters back after the files are read again", async () => {
+    await choose(await financeWorkbook());
+    const { dashFilters } = await import("../src/filters");
+    const { restoreFilters, snapshotFilters } = await import("../src/filterGroup");
+    dashFilters.months.setValues(["Feb"]);
+    const snapshot = snapshotFilters();
+    await choose(await financeWorkbook()); // a plain load starts from the default filters
+    expect(dashFilters.months.values().length).toBeGreaterThan(1);
+    restoreFilters(snapshot);
+    expect(dashFilters.months.values()).toEqual(["Feb"]);
+  });
+
+  it("hides the Refresh button where the browser cannot keep file handles", () => {
+    expect($("refreshFiles").hidden).toBe(true);
+  });
+});
+
+describe("Market dividends come from the Income sheet", () => {
+  it("pivots Dividend rows by month and holding, with a years filter", async () => {
+    const INC = ["Date", "Particulars", "Currency", "Amount", "Principle", "Category", "Mode"];
+    await choose(
+      fileOf(
+        await buildXlsx([
+          {
+            name: "Income",
+            rows: [
+              INC,
+              ["05-02-2026", "Dividend: TCS", "INR", 900, null, "Dividend", "Bank"],
+              ["06-02-2026", "Dividend: ITC", "INR", 200, null, "Dividend", "Bank"],
+              ["07-02-2025", "Dividend: TCS", "INR", 450, null, "Dividend", "Bank"],
+              ["01-02-2026", "Salary", "INR", 1000, null, "Salary", "Bank"],
+              ["09-02-2026", "Dividend TCS", "INR", 5, null, "Dividend", "Bank"], // not "Dividend: NAME"
+            ],
+          },
+        ]),
+        "income.xlsx",
+      ),
+    );
+    await choose(await marketWorkbook());
+    click(document.querySelector(".side-item[data-page='market']"));
+    const body = text("mkdBody");
+    expect(body).toContain("Feb");
+    expect(body).toContain("TCS");
+    expect(body).toContain("ITC");
+    expect(body).toContain("2025");
+    expect(body).toContain("2026");
+    expect(body).toContain("1 Income row with Category Dividend was skipped");
+    // Years filter: leave only 2026 ticked
+    $<HTMLInputElement>("mkdYearMenu").querySelectorAll<HTMLInputElement>("input.mkdYearCheck").forEach((box) => {
+      if (box.value === "2025") box.click();
+    });
+    expect(text("mkdBody")).not.toContain("2025");
+    expect(text("mkdYearToggle")).toBe("1 selected ▾");
+  });
+});

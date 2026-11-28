@@ -249,5 +249,32 @@ export function createFilterGroup({
     rebuildModes(); // Modes depends on Categories, and is itself reset here
   };
 
+  registry.push({ group, onChange });
   return group;
+}
+
+/* ------------ Keeping the filters across a refresh ------------ */
+
+// Every group made by createFilterGroup, so a Refresh can put each one back
+const registry: { group: FilterGroup; onChange: (name: FilterName) => void }[] = [];
+
+export type FilterSnapshot = FilterSelection[];
+
+/** What every filter group has ticked right now. */
+export function snapshotFilters(): FilterSnapshot {
+  return registry.map(({ group }) =>
+    group.years
+      ? { years: group.years.values(), months: group.months.values(), cats: group.cats.values(), modes: group.modes.values() }
+      : {},
+  );
+}
+
+/** Tick the same items again (those that still exist) and redraw each section. */
+export function restoreFilters(snapshot: FilterSnapshot): void {
+  registry.forEach(({ group, onChange }, i) => {
+    const selection = snapshot[i];
+    if (!selection || !selection.years) return;
+    group.init(selection);
+    onChange("years");
+  });
 }

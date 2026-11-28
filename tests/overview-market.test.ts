@@ -137,7 +137,7 @@ const ORDERS_HEAD = ["Date", "Order", "Holding", "Units", "UnitAvg", "LotValue",
 const sheet = (name: string, grid: unknown[][]): SheetMatrix => ({ name, grid: grid as SheetMatrix["grid"] });
 
 describe("parseMarket", () => {
-  it("finds the tables by their headings and reads orders, prices and dividends", () => {
+  it("finds the tables by their headings and reads orders and prices", () => {
     const data = parseMarket([
       sheet("Expense", [["Date", "Amount", "Category", "Mode"]]),
       sheet("Log", [
@@ -157,9 +157,8 @@ describe("parseMarket", () => {
         ["GIFT", 100, "Stock", "", "", 3, 50],
         [12345, 1], // total row
       ]),
-      sheet("Div", [["Date", "Holding", "Dividend"], ["01-06-2025", "NIFTYBEES", 15], ["02-06-2025", "NIFTYBEES", 0]]),
     ])!;
-    expect(data.sheetNames).toEqual(["Log", "Sheet2", "Div"]);
+    expect(data.sheetNames).toEqual(["Log", "Sheet2"]);
     expect(data.orders.map((o) => [o.date, o.type, o.holding, o.units, o.value])).toEqual([
       ["2025-01-01", "Buy", "GOLDBEES", 5, 300],
       ["2025-02-01", "Buy", "NIFTYBEES", 10, 2500],
@@ -169,7 +168,22 @@ describe("parseMarket", () => {
     expect(data.skipped).toBe(2);
     expect(data.info.get("NIFTYBEES")).toMatchObject({ ltp: 280, category: "ETF", subSector: "Large cap" });
     expect(data.info.has("12345")).toBe(false);
-    expect(data.dividends).toEqual([{ date: "2025-06-01", holding: "NIFTYBEES", amount: 15 }]);
+  });
+
+  it("reads the instrument type from an Instrument heading (and still from Category)", () => {
+    const orders = sheet("Orders", [ORDERS_HEAD, ["01-01-2025", "Buy", "NIFTYBEES", 1, 100]]);
+    const withInstrument = parseMarket([orders, sheet("P", [["Holding", "LTP", "Instrument"], ["NIFTYBEES", 110, "ETF"]])])!;
+    const withCategory = parseMarket([orders, sheet("P", [["Holding", "LTP", "Category"], ["NIFTYBEES", 110, "ETF"]])])!;
+    expect(withInstrument.info.get("NIFTYBEES")?.category).toBe("ETF");
+    expect(withCategory.info.get("NIFTYBEES")?.category).toBe("ETF");
+  });
+
+  it("reads the held units from a Units heading (and still from Qty)", () => {
+    const orders = sheet("Orders", [ORDERS_HEAD, ["01-01-2025", "Buy", "NIFTYBEES", 1, 100]]);
+    const withUnits = parseMarket([orders, sheet("P", [["Holding", "LTP", "Units", "Avg"], ["GIFT", 100, 3, 50]])])!;
+    const withQty = parseMarket([orders, sheet("P", [["Holding", "LTP", "Qty", "Avg"], ["GIFT", 100, 3, 50]])])!;
+    expect(withUnits.info.get("GIFT")?.qty).toBe(3);
+    expect(withQty.info.get("GIFT")?.qty).toBe(3);
   });
 
   it("reads the instrument type from an Instrument heading (and still from Category)", () => {

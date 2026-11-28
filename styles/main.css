@@ -163,6 +163,42 @@ header {
   cursor: pointer;
 }
 
+/* Load Excel with the Refresh button next to it */
+.upload-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.upload-row .upload {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--ctl-border, #cbd5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ctl-text, #334155);
+  font-size: 13px;
+}
+
+.refresh-btn[hidden] {
+  display: none;
+}
+
+.refresh-btn:hover {
+  background: #f8fafc;
+}
+
+.refresh-note {
+  margin-top: -4px;
+}
+
 .wrap {
   padding: 20px;
 }
@@ -924,8 +960,6 @@ th[data-dir="desc"] .sortarrow::after {
 .line-tip[hidden] {
   display: none;
 }
-
-
 
 :root {
   --chart-gap-top: 18px;
@@ -2665,6 +2699,71 @@ main.wrap[hidden] {
   flex-wrap: wrap;
 }
 
+/* Two cards side by side (the Market page uses the room on wide screens) */
+.mk-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+.mk-pair > .card {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .mk-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Buy history and Dividends: the same height, the body scrolls inside the
+   card (title and filters stay where they are) */
+.mk-pair > .mk-fixed {
+  height: 640px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.mk-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-top: 10px;
+}
+
+.mk-togglerow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.mk-scroll .mk-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 34px;
+  box-sizing: border-box;
+  background: #f8fafc;
+}
+
+/* The yellow holding row stays under the headings */
+.mk-scroll .mk-table thead tr.mk-pin th {
+  top: 34px;
+  z-index: 1;
+  background: #fef9c3;
+  font-weight: 700;
+}
+
+.mk-scroll .mk-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: #f1f5f9;
+}
+
 /* Investment calendar: drawn like the Expense calendar (.heat-* classes,
    section 9b). Only the colours are its own: blue to violet, and a red edge
    on a day that also had a sell. */
@@ -2919,37 +3018,6 @@ main.wrap[hidden] {
 }
 
 /* Buy history */
-.mk-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mk-select select {
-  font: inherit;
-  padding: 6px 10px;
-  border: 1px solid #dbe2ea;
-  border-radius: 8px;
-  background: #fff;
-  min-width: 200px;
-}
-
-.mk-hfilters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 24px;
-}
-
-.mk-hist {
-  display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.mk-htable {
-  max-height: 460px;
-}
 
 .mk-h-total td {
   font-weight: 700;
@@ -2999,7 +3067,8 @@ main.wrap[hidden] {
   background: #f8fafc;
 }
 
-.mk-dgroup button {
+.mk-dgroup button,
+.mk-h-year button {
   /* The general button padding (9px 11px) pushed the − / + out of this
      22px box, to its bottom edge: centre it instead */
   display: inline-flex;
@@ -3017,21 +3086,9 @@ main.wrap[hidden] {
   cursor: pointer;
 }
 
-.mk-dchild {
+.mk-dchild,
+.mk-hchild {
   padding-left: 40px !important;
-}
-
-@media (max-width: 1300px) {
-}
-
-@media (max-width: 1000px) {
-  .mk-hist {
-    grid-template-columns: 1fr;
-  }
-
-}
-
-@media (max-width: 560px) {
 }
 
 @media (max-width: 800px) {
@@ -3043,10 +3100,6 @@ main.wrap[hidden] {
     grid-template-columns: 1fr 1fr;
   }
 
-  .mk-select select {
-    min-width: 0;
-    max-width: 60vw;
-  }
 }
 
 /* =========================================================================

@@ -53,6 +53,7 @@ PersonalFinanceApp/
 | | `analyzer.ts`, `recurringPanel.ts` | Recurring bills and unusual entries |
 | | `settings.ts` | Currency buttons and the Settings pop-up |
 | | `emptyState.ts` | The welcome card before a file is loaded |
+| | `fileHandles.ts` | Remembers which files were picked (Edge/Chrome) for the Refresh button |
 | Other pages | `overview.ts` | Overview: income vs expenses, savings |
 | | `market.ts` | Market: holdings, XIRR, calendar, treemap, buy history, dividends |
 | | `networth.ts` | Net worth: Accounts sheet + market, month by month |
