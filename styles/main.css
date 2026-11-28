@@ -3101,7 +3101,22 @@ main.wrap[hidden] {
 }
 
 #mkTableCard .mk-tablewrap {
-  max-height: 560px;
+  max-height: 400px; /* about 8 rows, then it scrolls */
+}
+
+/* Headings and the Total row stay in view while the rows scroll */
+#mkTableCard .mk-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+}
+
+#mkTableCard .mk-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: #f1f5f9;
 }
 
 /* Buy history */
