@@ -742,40 +742,36 @@ function mkLayoutTreemap(s: MarketSummary): void {
 
 /* ---- Invested vs current value per holding ---- */
 
-// Card shell: title, Instrument filter row, the chart and, under it, the legend.
+// Card shell: title, Instrument filter row, the chart and, under it, the centred legend.
 function mkBarsHtml(): string {
   return `<div><div class="graphtitle"><b>Invested vs current value</b></div><div class="small">Per holding, largest investment first</div></div>
     ${mkInstFilterHtml(mkBarsInst)}
-    <div id="mkvBody" class="ov-scroll mk-vscroll"></div>
-    <div class="mk-togglerow mk-keyrow"><div class="ov-key"><span><span class="ov-sw" style="background:#93c5fd"></span>Invested</span><span><span class="ov-sw" style="background:#2563eb"></span>Current (gain)</span><span><span class="ov-sw" style="background:#f59e0b"></span>Current (loss)</span></div></div>`;
+    <div id="mkvBody" class="bars bars-slant mk-bars"></div>
+    <div class="legend"><span class="legend-btn"><span class="legend-swatch" style="background:#93c5fd"></span>Invested</span><span class="legend-btn"><span class="legend-swatch" style="background:#2563eb"></span>Current (gain)</span><span class="legend-btn"><span class="legend-swatch" style="background:#f59e0b"></span>Current (loss)</span></div>`;
 }
 
-// The chart has a fixed total height. Holding names are slanted like the Expense
-// charts; the longer the longest name, the more of that height they take from the
-// bars (the block itself never grows). A left axis (0, 25, 50, 75, 100% of the
-// largest value) and light gridlines are drawn like the Expense breakdown.
-const MK_BARS_HEIGHT = 340;
+// Built exactly like the Expense breakdown bars (same classes and CSS: .bars,
+// .bars-slant, .col-track, .col-name, left axis with 0 / 25 / 50 / 75 / 100% and
+// gridlines, hidden scrollbar, names slanted at 45 degrees and cut at 72px).
+// Each holding has two bars in its column: invested and current value.
 function drawMkBars(): void {
+  const box = $("mkvBody");
   const list = [...mkFiltered(marketSummary(), mkBarsInst)].sort((a, b) => b.invested - a.invested);
   if (!list.length) {
-    $("mkvBody").innerHTML = `<div class="nodata small">No holdings for this choice.</div>`;
+    box.innerHTML = NO_DATA_HTML;
     return;
   }
   const top = Math.max(1, ...list.map((h) => Math.max(h.invested, h.current)));
-  const labW = Math.min(120, Math.max(...list.map((h) => h.name.length)) * 6.4 + 4); // name length on the slant, px
-  const band = Math.round(labW * 0.7071 + 18);
-  const plot = Math.max(120, MK_BARS_HEIGHT - band);
-  const axisW = Math.max(52, Math.round(labW * 0.7071) - 6); // the first name slants out to the left, under nothing
   const axis = [1, 0.75, 0.5, 0.25, 0].map((p) => `<span class="axis-val" style="top:${(1 - p) * 100}%">${p ? esc(moneyShort(top * p)) : "0"}</span>`).join("");
-  const bars = list
-    .map(
-      (h) => `<button type="button" class="mk-col" data-holding="${esc(h.name)}" title="${esc(`${h.name}\nInvested ${money(h.invested)}\nCurrent value ${money(h.current)}\n${mkSigned(h.pnl)} (${mkSignPct(h.pct)})`)}">
-        <span class="mk-colbars"><span class="mk-bar mk-b-inv" style="height:${((h.invested / top) * 100).toFixed(1)}%"></span><span class="mk-bar mk-b-cur ${h.pnl < 0 ? "down" : ""}" style="height:${((h.current / top) * 100).toFixed(1)}%"></span></span>
-        <span class="mk-colname"><span class="mk-collabel">${esc(h.name)}</span></span>
-      </button>`,
-    )
+  const cols = list
+    .map((h) => {
+      const tip = esc(`${h.name}\nInvested ${money(h.invested)}\nCurrent value ${money(h.current)}\n${mkSigned(h.pnl)} (${mkSignPct(h.pct)})`);
+      const fill = (v: number, cls: string) => `<span class="col-fill ${cls}" style="height:${v > 0 ? Math.max(2, (v / top) * 100) : 0}%"></span>`;
+      return `<button type="button" data-holding="${esc(h.name)}" title="${tip}" aria-label="${tip}"><span class="col-track">${fill(h.invested, "mk-f-inv")}${fill(h.current, h.pnl < 0 ? "mk-f-loss" : "mk-f-cur")}</span><span class="col-name"><span class="col-label">${esc(h.name)}</span></span></button>`;
+    })
     .join("");
-  $("mkvBody").innerHTML = `<div class="mk-cols" style="--plot:${plot}px;--band:${band}px;--labw:${Math.round(labW)}px;--axisw:${axisW}px"><div class="mk-yaxis" aria-hidden="true">${axis}</div>${bars}</div>`;
+  box.style.setProperty("--cols", String(Math.min(12, Math.max(list.length, 6))));
+  box.innerHTML = `<div class="axis-col yaxis"><div class="axis-plot">${axis}</div></div>${cols}<div class="axis-col filler"><div class="axis-plot"></div></div>`;
 }
 
 /* ---- Holdings table ---- */
