@@ -771,6 +771,9 @@ function drawMkBars(): void {
     })
     .join("");
   box.style.setProperty("--cols", String(Math.min(12, Math.max(list.length, 6))));
+  // The axis is only as wide as its values need (the Expense bars keep a fixed 48px)
+  const axisW = Math.max(34, Math.max(...[1, 0.75, 0.5, 0.25].map((p) => moneyShort(top * p).length)) * 6 + 12);
+  box.style.setProperty("--axis", `${axisW}px`);
   box.innerHTML = `<div class="axis-col yaxis"><div class="axis-plot">${axis}</div></div>${cols}<div class="axis-col filler"><div class="axis-plot"></div></div>`;
 }
 
@@ -1219,11 +1222,18 @@ function drawMkDividends(): void {
       for (const c of sortKeys(kids.keys())) rows += `<tr><td class="mk-dchild" title="${esc(label(c))}">${esc(label(c))}</td>${cells(kids.get(c)!)}</tr>`;
     }
   }
-  box.innerHTML = `<div class="mk-scroll"><table class="mk-table mk-dtable">
-      <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr><td>Total</td>${cells(grand)}</tr></tfoot>
-    </table></div>${
+  // Two tables with the same fixed column widths: the rows scroll in the first, the Total
+  // sits under them in the second. (A sticky Total inside the scrolling table drew rows
+  // under it on some screens.) Both sit in one wrapper that scrolls sideways when narrow.
+  const colgroup = `<colgroup><col style="width:130px">${years.map(() => "<col>").join("")}<col style="width:112px"></colgroup>`;
+  const minW = 130 + 112 + years.length * 92;
+  box.innerHTML = `<div class="mk-dwrap"><div class="mk-dinner" style="min-width:${minW}px">
+      <div class="mk-dbody"><table class="mk-table mk-dtable">${colgroup}
+        <thead><tr><th>${byMonth ? "Month" : "Holding"}</th>${years.map((y) => `<th class="num">${y}</th>`).join("")}<th class="num">Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div class="mk-dfoot"><table class="mk-table mk-dtable">${colgroup}<tbody><tr><td>Total</td>${cells(grand)}</tr></tbody></table></div>
+    </div></div>${
       skipped ? `<div class="small mk-foot">${skipped} Income row${skipped === 1 ? "" : "s"} with Category Dividend ${skipped === 1 ? "was" : "were"} skipped: Particulars must read Dividend: HOLDING.</div>` : ""
     }`;
 }
