@@ -961,8 +961,6 @@ th[data-dir="desc"] .sortarrow::after {
   display: none;
 }
 
-
-
 :root {
   --chart-gap-top: 18px;
   --chart-gap-legend: 16px;
@@ -2720,15 +2718,50 @@ main.wrap[hidden] {
   }
 }
 
-/* The buy history is a table next to a chart: when its card is narrow, stack them */
-#mkHistory {
-  container-type: inline-size;
+/* Buy history and Dividends: the same height, the body scrolls inside the
+   card (title and filters stay where they are) */
+.mk-pair > .mk-fixed {
+  height: 640px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-@container (max-width: 760px) {
-  .mk-hist {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.mk-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-top: 10px;
+}
+
+.mk-togglerow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.mk-scroll .mk-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 34px;
+  box-sizing: border-box;
+  background: #f8fafc;
+}
+
+/* The yellow holding row stays under the headings */
+.mk-scroll .mk-table thead tr.mk-pin th {
+  top: 34px;
+  z-index: 1;
+  background: #fef9c3;
+  font-weight: 700;
+}
+
+.mk-scroll .mk-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: #f1f5f9;
 }
 
 /* Investment calendar: drawn like the Expense calendar (.heat-* classes,
@@ -2985,37 +3018,6 @@ main.wrap[hidden] {
 }
 
 /* Buy history */
-.mk-select {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mk-select select {
-  font: inherit;
-  padding: 6px 10px;
-  border: 1px solid #dbe2ea;
-  border-radius: 8px;
-  background: #fff;
-  min-width: 200px;
-}
-
-.mk-hfilters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 24px;
-}
-
-.mk-hist {
-  display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.mk-htable {
-  max-height: 460px;
-}
 
 .mk-h-total td {
   font-weight: 700;
@@ -3065,7 +3067,8 @@ main.wrap[hidden] {
   background: #f8fafc;
 }
 
-.mk-dgroup button {
+.mk-dgroup button,
+.mk-h-year button {
   /* The general button padding (9px 11px) pushed the − / + out of this
      22px box, to its bottom edge: centre it instead */
   display: inline-flex;
@@ -3083,21 +3086,9 @@ main.wrap[hidden] {
   cursor: pointer;
 }
 
-.mk-dchild {
+.mk-dchild,
+.mk-hchild {
   padding-left: 40px !important;
-}
-
-@media (max-width: 1300px) {
-}
-
-@media (max-width: 1000px) {
-  .mk-hist {
-    grid-template-columns: 1fr;
-  }
-
-}
-
-@media (max-width: 560px) {
 }
 
 @media (max-width: 800px) {
@@ -3109,10 +3100,6 @@ main.wrap[hidden] {
     grid-template-columns: 1fr 1fr;
   }
 
-  .mk-select select {
-    min-width: 0;
-    max-width: 60vw;
-  }
 }
 
 /* =========================================================================
