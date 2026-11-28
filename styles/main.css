@@ -2774,11 +2774,6 @@ main.wrap[hidden] {
   margin-top: 10px;
 }
 
-.mk-keyrow {
-  justify-content: flex-start;
-  margin-top: 8px;
-}
-
 .mk-scroll .mk-table thead th {
   position: sticky;
   top: 0;
@@ -2928,113 +2923,36 @@ main.wrap[hidden] {
 }
 
 /* Invested vs current bars */
-.mk-cols {
-  display: grid;
-  grid-template-columns: var(--axisw, 52px);
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(34px, 1fr);
-  gap: 0;
-  min-width: max-content;
-  padding-top: 8px; /* room for the top axis value */
-}
-
-/* Left value axis: stays while the chart scrolls sideways. Only as tall as the
-   bars, so the slanted names under it are never covered. */
-.mk-yaxis {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  height: var(--plot, 260px);
-  background: #fff;
-  background-image: linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0);
-  background-size: 100% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 0, 0 25%, 0 50%, 0 75%, 0 100%;
-}
-
-.mk-yaxis .axis-val {
-  right: 6px;
-}
-
-.mk-vscroll {
-  scrollbar-width: none; /* hidden, scrolling still works */
-  margin-top: 10px;
-}
-
-.mk-vscroll::-webkit-scrollbar {
-  display: none;
-}
-
-.mk-col {
+/* Invested vs current value: the Expense bars (.bars) with two bars per column,
+   filling the card down to the legend */
+#mkBarsCard {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
-  border-radius: 6px;
 }
 
-.mk-col:hover {
-  background: #f8fafc;
+.mk-bars {
+  min-height: 300px;
 }
 
-.mk-colbars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+.mk-bars .col-track {
   gap: 2px;
-  width: 100%;
-  height: var(--plot, 260px);
-  /* light lines at 0, 25, 50, 75 and 100%, edge to edge across the columns */
-  background-image: linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0), linear-gradient(#e2e8f0, #e2e8f0);
-  background-size: 100% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 0, 0 25%, 0 50%, 0 75%, 0 100%;
 }
 
-.mk-bar {
+.mk-bars .col-fill {
   width: 11px;
-  min-height: 1px;
-  border-radius: 2px 2px 0 0;
+  max-width: none;
 }
 
-.mk-b-inv {
+.mk-bars .mk-f-inv {
   background: #93c5fd;
 }
 
-.mk-b-cur {
+.mk-bars .mk-f-cur {
   background: #2563eb;
 }
 
-.mk-b-cur.down {
+.mk-bars .mk-f-loss {
   background: #f59e0b;
-}
-
-/* Holding names slant at 45 degrees like the Expense charts: each name ends
-   under its bar and runs down to the left, inside a band whose height
-   (--band) follows the longest name. */
-.mk-colname {
-  position: relative;
-  width: 100%;
-  height: var(--band, 60px);
-}
-
-.mk-collabel {
-  position: absolute;
-  top: 4px;
-  right: 50%;
-  max-width: var(--labw, 72px);
-  font-size: 11px;
-  line-height: 12px;
-  color: #475569;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transform-origin: 100% 0;
-  transform: rotate(-45deg);
 }
 
 /* Tables */
@@ -4307,4 +4225,8 @@ main.wrap[hidden] {
 #mkHistory,
 #mkDividends {
   scroll-margin-top: 12px;
+}
+
+#mkBarsCard .legend-btn {
+  cursor: default;
 }
